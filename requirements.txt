@@ -1,0 +1,15 @@
+# ============================================================================
+# SAP MCP Server - Python Dependencies
+# ============================================================================
+# Requisitos minimos: Python 3.10+
+# Recomendado: Python 3.11 o 3.12
+#
+# El paquete 'mcp' requiere Python 3.10 como minimo.
+# Si tienes Python 3.8 o 3.9, debes actualizar a 3.10+
+# ============================================================================
+
+# Model Context Protocol SDK (requiere Python >=3.10)
+mcp>=1.0.0
+
+# HTTP client para llamadas a SAP ADT REST API
+requests>=2.31.0

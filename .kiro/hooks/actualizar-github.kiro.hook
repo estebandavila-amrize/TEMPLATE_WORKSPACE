@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Push to GitHub",
+  "description": "Runs git add, commit, and push for all workspace changes to origin. Commit message includes date and time automatically.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "powershell -ExecutionPolicy Bypass -File scripts/git-push.ps1",
+    "timeout": 60
+  }
+}

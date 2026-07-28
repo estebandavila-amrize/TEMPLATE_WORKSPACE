@@ -1,0 +1,30 @@
+{
+  "systems": {
+    "DEV": {
+      "name": "DEV - Example Development System",
+      "host": "your-sap-host.example.net",
+      "port": "8000",
+      "client": "100",
+      "description": "Main development system",
+      "team": "Your Team",
+      "default_package": "ZDEV_XX",
+      "cts_project_management": true,
+      "allow_tmp": false
+    },
+    "SBX": {
+      "name": "SBX - Sandbox",
+      "host": "your-sandbox-host.example.net",
+      "port": "8040",
+      "client": "100",
+      "description": "Sandbox system for testing",
+      "team": "All",
+      "default_package": "$TMP",
+      "cts_project_management": false,
+      "allow_tmp": true
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "maintained_by": "[Your team name]"
+  }
+}

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+
+# Node
+node_modules/
+package-lock.json
+
+# Kiro — contiene passwords en mcp.json
+.kiro/mcp.json
+.kiro/settings/
+
+# Generado por install.bat — contiene hostnames/clientes reales de tu org
+config-systems.json
+
+# Configuración personal del usuario (contiene credenciales)
+user-config.json
+
+# Scripts de prueba
+test-wizard.ps1
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentos binarios (opcionales, pesan mucho)
+*.docx
+*.mht
+
+# Carpetas de trabajo ABAP (analisis, CRs, proyectos locales)
+# Cualquier carpeta que empiece con Z queda excluida automaticamente.
+# Esto cubre: ZCL_*, ZIF_*, ZSD_*, ZSDR_*, ZSDE_*, ZFM_*, etc.
+# Para subir una carpeta Z* especifica, usar: git add -f <carpeta>
+Z*/
