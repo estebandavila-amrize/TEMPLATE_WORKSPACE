@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "ECC 7.5 Tech Guardrail",
+  "description": "Before writing ABAP code to SAP, scan the source_code argument for forbidden patterns: CDS view syntax, AMDP METHOD BY DATABASE, RAP/EML keywords (MODIFY ENTITIES, READ ENTITIES), ABAP Cloud syntax (FINAL(x)), WITH (CTE). Block the write if violations are found.",
+  "version": "1",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": [
+      ".*sap_create_program.*",
+      ".*sap_update_program.*",
+      ".*sap_create_class.*",
+      ".*sap_update_class.*",
+      ".*sap_create_interface.*",
+      ".*sap_update_interface.*",
+      ".*sap_update_function_module.*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Inspect the source_code parameter being sent to SAP. Check for these FORBIDDEN patterns that do NOT exist on ECC 7.5 EHP8: (1) 'BY DATABASE PROCEDURE' or 'BY DATABASE FUNCTION' (AMDP), (2) 'MODIFY ENTITIES' or 'READ ENTITIES' or 'COMMIT ENTITIES' (RAP/EML), (3) 'define view entity' or 'define root view entity' (CDS), (4) 'FINAL(' as inline declaration (7.57+), (5) 'WITH +' followed by SELECT (CTE syntax). If ANY violation is found, state ACCESS DENIED and list the violations. If the code is clean classic ABAP, state ACCESS GRANTED."
+  },
+  "workspaceFolderName": "sap-abap-mcp-workspace",
+  "shortName": "tech-guardrail"
+}

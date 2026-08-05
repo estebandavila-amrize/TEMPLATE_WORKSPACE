@@ -1,35 +1,55 @@
 ---
 name: sap-abap
 description: |
-  Comprehensive ABAP development skill for SAP systems. Use when writing ABAP code,
-  working with internal tables, structures, ABAP SQL, object-oriented programming,
-  RAP (RESTful Application Programming Model), CDS views, EML statements, ABAP Cloud
-  development, string processing, dynamic programming, RTTI/RTTC, field symbols,
-  data references, exception handling, or ABAP unit testing. Covers both classic
-  ABAP and modern ABAP for Cloud Development patterns.
+  ABAP development skill for SAP ECC 6.0 EHP8 (NetWeaver 7.50, ABAP 7.50).
+  Use when writing ABAP code, working with internal tables, structures, Open SQL,
+  object-oriented programming, string processing, dynamic programming, RTTI/RTTC,
+  field symbols, data references, exception handling, or ABAP unit testing.
+  This system does NOT have HANA, CDS views, RAP, EML, AMDP, or ABAP Cloud.
+  Only classic ABAP patterns are valid.
 license: GPL-3.0
 metadata:
-  version: 1.0.0
-  last_updated: "2025-11-22"
-  mcpmarket-version: 1.0.0
+  version: 2.0.0
+  last_updated: "2026-07-28"
+  target_system: "SAP ECC 6.0 EHP8 / NetWeaver 7.50 / ABAP 7.50"
+  database: "Non-HANA (traditional DB)"
+  unavailable_features:
+    - CDS views
+    - AMDP (ABAP Managed Database Procedures)
+    - RAP (RESTful Application Programming Model)
+    - EML (Entity Manipulation Language)
+    - ABAP Cloud / Steampunk
+    - XCO library
+    - Generative AI SDK
+    - WITH (CTE) in Open SQL
+    - HIERARCHY in Open SQL
+    - FINAL(x) immutable inline declarations
 ---
-# SAP ABAP Development Skill
+# SAP ABAP Development Skill — ECC 7.5 EHP8
 
-## Related Skills
+## System Constraints (CRITICAL)
 
-- **sap-abap-cds**: Use when developing CDS views for ABAP-backed Fiori applications or defining data models with annotations
-- **sap-btp-cloud-platform**: Use when working with ABAP Environment on BTP or deploying ABAP applications to the cloud
-- **sap-cap-capire**: Use when connecting ABAP systems with CAP applications or integrating with OData services
-- **sap-fiori-tools**: Use when building Fiori applications with ABAP backends or consuming OData services from ABAP systems
-- **sap-api-style**: Use when documenting ABAP APIs or following SAP API documentation standards
+This system is SAP ECC 6.0 EHP8 running on NetWeaver 7.50 with ABAP release 7.50.
+The database is **NOT SAP HANA**. The following features are **NOT AVAILABLE**:
+
+| Feature | Why Not |
+|---------|---------|
+| CDS Views | Requires HANA or S/4 |
+| AMDP | Requires HANA |
+| RAP / EML | Requires S/4HANA / BTP |
+| ABAP Cloud (Steampunk) | Requires BTP ABAP Environment |
+| XCO Library | Cloud-only released API |
+| WITH (CTE) in SQL | Requires HANA 7.51+ |
+| HIERARCHY expressions | Requires HANA |
+| FINAL(x) declarations | Requires ABAP 7.57+ |
+| Generative AI SDK | Requires BTP |
 
 ## Table of Contents
 - [Quick Reference](#quick-reference)
-- [Bundled Resources](#bundled-resources)
+- [Available ABAP 7.50 Features](#available-abap-750-features)
 - [Common Patterns](#common-patterns)
 - [Error Catalog](#error-catalog)
 - [Performance Tips](#performance-tips)
-- [Source Documentation](#source-documentation)
 
 ## Quick Reference
 
@@ -41,9 +61,8 @@ DATA num TYPE i VALUE 123.
 DATA txt TYPE string VALUE `Hello`.
 DATA flag TYPE abap_bool VALUE abap_true.
 
-" Inline declarations
+" Inline declarations (available in 7.40+)
 DATA(result) = some_method( ).
-FINAL(immutable) = `constant value`.
 
 " Structures
 DATA: BEGIN OF struc,
@@ -55,6 +74,43 @@ DATA: BEGIN OF struc,
 DATA itab TYPE TABLE OF string WITH EMPTY KEY.
 DATA sorted_tab TYPE SORTED TABLE OF struct WITH UNIQUE KEY id.
 DATA hashed_tab TYPE HASHED TABLE OF struct WITH UNIQUE KEY id.
+```
+
+### Available ABAP 7.50 Features
+
+These constructor expressions and inline features ARE available on your system:
+
+```abap
+" VALUE — structures and tables
+DATA(struc) = VALUE struct_type( comp1 = 1 comp2 = `text` ).
+DATA(itab) = VALUE itab_type( ( a = 1 ) ( a = 2 ) ( a = 3 ) ).
+
+" NEW — create instances
+DATA(dref) = NEW i( 123 ).
+DATA(oref) = NEW zcl_my_class( param = value ).
+
+" CORRESPONDING — structure/table mapping
+target = CORRESPONDING #( source ).
+target = CORRESPONDING #( source MAPPING target_field = source_field ).
+
+" COND/SWITCH — conditional values
+DATA(text) = COND string( WHEN flag = abap_true THEN `Yes` ELSE `No` ).
+DATA(result) = SWITCH #( code WHEN 1 THEN `A` WHEN 2 THEN `B` ELSE `X` ).
+
+" CONV — type conversion
+DATA(dec) = CONV decfloat34( 1 / 3 ).
+
+" FILTER — table filtering (requires sorted/hashed table with appropriate key)
+DATA(filtered) = FILTER #( itab WHERE status = 'A' ).
+
+" REDUCE — aggregation
+DATA(sum) = REDUCE i( INIT s = 0 FOR wa IN itab NEXT s = s + wa-amount ).
+
+" REF — reference operator
+DATA(dref) = REF #( variable ).
+
+" String templates
+DATA(msg) = |Name: { name }, Date: { sy-datum DATE = ISO }|.
 ```
 
 ### Internal Tables - Essential Operations
@@ -84,7 +140,7 @@ DELETE itab WHERE col1 > 5.
 DELETE TABLE itab FROM VALUE #( col1 = 1 ).
 ```
 
-### ABAP SQL Essentials
+### Open SQL (NOT ABAP SQL — no CTE/WITH, no HIERARCHY)
 
 ```abap
 " SELECT into table
@@ -92,56 +148,35 @@ SELECT * FROM dbtab INTO TABLE @DATA(result_tab).
 
 " SELECT with conditions
 SELECT carrid, connid, fldate
-  FROM zdemo_abap_fli
+  FROM sflight
   WHERE carrid = 'LH'
   INTO TABLE @DATA(flights).
 
 " Aggregate functions
 SELECT carrid, COUNT(*) AS cnt, AVG( price ) AS avg_price
-  FROM zdemo_abap_fli
+  FROM sflight
   GROUP BY carrid
   INTO TABLE @DATA(stats).
 
 " JOIN operations
 SELECT a~carrid, a~connid, b~carrname
-  FROM zdemo_abap_fli AS a
-  INNER JOIN zdemo_abap_carr AS b ON a~carrid = b~carrid
+  FROM sflight AS a
+  INNER JOIN scarr AS b ON a~carrid = b~carrid
   INTO TABLE @DATA(joined).
+
+" FOR ALL ENTRIES (classic alternative to subqueries)
+IF itab_keys IS NOT INITIAL.
+  SELECT * FROM vbap
+    FOR ALL ENTRIES IN @itab_keys
+    WHERE vbeln = @itab_keys-vbeln
+    INTO TABLE @DATA(lt_items).
+ENDIF.
 
 " Modification statements
 INSERT dbtab FROM @struc.
 UPDATE dbtab FROM @struc.
 MODIFY dbtab FROM TABLE @itab.
 DELETE FROM dbtab WHERE condition.
-```
-
-### Constructor Expressions
-
-```abap
-" VALUE - structures and tables
-DATA(struc) = VALUE struct_type( comp1 = 1 comp2 = `text` ).
-DATA(itab) = VALUE itab_type( ( a = 1 ) ( a = 2 ) ( a = 3 ) ).
-
-" NEW - create instances
-DATA(dref) = NEW i( 123 ).
-DATA(oref) = NEW zcl_my_class( param = value ).
-
-" CORRESPONDING - structure/table mapping
-target = CORRESPONDING #( source ).
-target = CORRESPONDING #( source MAPPING target_field = source_field ).
-
-" COND/SWITCH - conditional values
-DATA(text) = COND string( WHEN flag = abap_true THEN `Yes` ELSE `No` ).
-DATA(result) = SWITCH #( code WHEN 1 THEN `A` WHEN 2 THEN `B` ELSE `X` ).
-
-" CONV - type conversion
-DATA(dec) = CONV decfloat34( 1 / 3 ).
-
-" FILTER - table filtering
-DATA(filtered) = FILTER #( itab WHERE status = 'A' ).
-
-" REDUCE - aggregation
-DATA(sum) = REDUCE i( INIT s = 0 FOR wa IN itab NEXT s = s + wa-amount ).
 ```
 
 ### Object-Oriented ABAP
@@ -208,7 +243,7 @@ txt &&= ` appended`.
 " String templates
 DATA(msg) = |Name: { name }, Date: { date DATE = ISO }|.
 
-" Functions
+" Functions (available in 7.50)
 DATA(upper) = to_upper( text ).
 DATA(len) = strlen( text ).
 DATA(found) = find( val = text sub = `search` ).
@@ -242,34 +277,6 @@ DATA(components) = CAST cl_abap_structdescr( tdo )->components.
 DATA(elem_type) = cl_abap_elemdescr=>get_string( ).
 CREATE DATA dref TYPE HANDLE elem_type.
 ```
-
----
-
-## Bundled Resources
-
-This skill includes 28 comprehensive reference files covering all aspects of ABAP development:
-
-### Related Skills
-- **sap-abap-cds**: For CDS view development and ABAP Cloud data modeling
-- **sap-btp-cloud-platform**: For ABAP Environment setup and BTP deployment
-- **sap-cap-capire**: For CAP service integration and ABAP system connections
-- **sap-fiori-tools**: For Fiori application development with ABAP backends
-- **sap-api-style**: For API documentation standards and best practices
-
-### Quick Access
-- **Reference Guide**: `references/skill-reference-guide.md` - Complete guide to all reference files
-- **Internal Tables**: `references/internal-tables.md` - Complete table operations
-- **ABAP SQL**: `references/abap-sql.md` - Comprehensive SQL reference
-- **Object Orientation**: `references/object-orientation.md` - Classes and interfaces
-
-### Development Topics
-- `references/constructor-expressions.md` - VALUE, NEW, COND, REDUCE
-- `references/rap-eml.md` - RAP and EML operations
-- `references/cds-views.md` - CDS view development
-- `references/string-processing.md` - String functions and regex
-- `references/unit-testing.md` - ABAP Unit framework
-- `references/performance.md` - Optimization techniques
-- ... and 18 more specialized references
 
 ---
 
@@ -318,18 +325,18 @@ DATA(numbered) = VALUE itab_type(
   ( line_no = idx data = wa ) ).
 ```
 
-### ABAP Cloud Compatibility
+### Classic BAdI / Enhancement Implementation
 
 ```abap
-" Use released APIs only
-DATA(uuid) = cl_system_uuid=>create_uuid_x16_static( ).
-DATA(date) = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_extended )->value.
-DATA(time) = xco_cp=>sy->time( )->as( xco_cp_time=>format->iso_8601_extended )->value.
+" Get BAdI handle (new BAdI framework — available since 7.0 EHP2)
+DATA: lo_badi TYPE REF TO badi_interface.
+GET BADI lo_badi.
+CALL BADI lo_badi->method_name
+  EXPORTING iv_param = lv_value
+  CHANGING  ct_data  = lt_data.
 
-" Output in cloud (if_oo_adt_classrun)
-out->write( result ).
-
-" Avoid: sy-datum, sy-uzeit, DESCRIBE TABLE, WRITE, MOVE...TO
+" Classic user-exit / enhancement point
+ENHANCEMENT-POINT enh_name SPOTS spot_name.
 ```
 
 ---
@@ -363,14 +370,51 @@ out->write( result ).
 1. **Use SORTED/HASHED tables** for frequent key access
 2. **Prefer field symbols** over work areas in loops for modification
 3. **Use PACKAGE SIZE** for large SELECT results
-4. **Avoid SELECT in loops** - use FOR ALL ENTRIES or JOINs
+4. **Avoid SELECT in loops** — use FOR ALL ENTRIES or JOINs
 5. **Use secondary keys** for different access patterns
-6. **Minimize CORRESPONDING** calls - explicit assignments are faster
+6. **Check sy-subrc after every DB operation** — never assume success
+7. **Buffer-friendly design** — single-record buffering, generic buffering for config tables
+
+---
+
+## Bundled References (ECC 7.5 applicable only)
+
+The following reference files are relevant to your system:
+- `references/internal-tables.md` — Complete table operations
+- `references/abap-sql.md` — Open SQL reference (ignore CTE/WITH sections)
+- `references/object-orientation.md` — Classes and interfaces
+- `references/constructor-expressions.md` — VALUE, NEW, COND, REDUCE
+- `references/string-processing.md` — String functions and regex
+- `references/unit-testing.md` — ABAP Unit framework
+- `references/performance.md` — Optimization techniques
+- `references/dynamic-programming.md` — RTTI, RTTC, field symbols
+- `references/exceptions.md` — Exception handling
+- `references/design-patterns.md` — Factory, Singleton, Strategy
+- `references/authorization.md` — AUTHORITY-CHECK (classic)
+- `references/abap-dictionary.md` — DDIC objects, SE11
+- `references/program-flow.md` — IF, CASE, LOOP, DO, WHILE
+- `references/builtin-functions.md` — String, numeric, table functions
+- `references/sap-luw.md` — Logical Unit of Work, COMMIT/ROLLBACK
+- `references/xml-json.md` — XML/JSON processing
+- `references/date-time.md` — Date/time (classic sy-datum, sy-uzeit patterns)
+- `references/numeric-operations.md` — Math functions
+- `references/bits-bytes.md` — Binary operations
+- `references/where-conditions.md` — WHERE clause patterns
+- `references/table-grouping.md` — GROUP BY loops
+
+**NOT applicable** (do not reference these on this system):
+- ~~references/amdp.md~~ — Requires HANA
+- ~~references/cds-views.md~~ — Requires HANA/S4
+- ~~references/cloud-development.md~~ — Requires BTP
+- ~~references/rap-eml.md~~ — Requires S/4HANA
+- ~~references/released-classes.md~~ — Cloud-only APIs
+- ~~references/generative-ai.md~~ — Requires BTP
+- ~~references/sql-hierarchies.md~~ — Requires HANA
 
 ---
 
 ## Source Documentation
 
-All content based on SAP official ABAP Cheat Sheets:
-- Repository: [https://github.com/SAP-samples/abap-cheat-sheets](https://github.com/SAP-samples/abap-cheat-sheets)
-- SAP Help: [https://help.sap.com/doc/abapdocu_latest_index_htm/latest/en-US/index.htm](https://help.sap.com/doc/abapdocu_latest_index_htm/latest/en-US/index.htm)
+All content based on SAP official documentation:
+- SAP Help: [https://help.sap.com/doc/abapdocu_750_index_htm/7.50/en-US/index.htm](https://help.sap.com/doc/abapdocu_750_index_htm/7.50/en-US/index.htm)
+- SAP Cheat Sheets: [https://github.com/SAP-samples/abap-cheat-sheets](https://github.com/SAP-samples/abap-cheat-sheets) (filter for 7.50 compatibility)

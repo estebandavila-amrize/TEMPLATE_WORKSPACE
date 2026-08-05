@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "Syntax Check After Write",
+  "description": "After any SAP write operation (create or update program, class, interface, FM), automatically run sap_syntax_check on the written object to catch compilation errors immediately.",
+  "version": "1",
+  "when": {
+    "type": "postToolUse",
+    "toolTypes": [
+      ".*sap_create_program.*",
+      ".*sap_update_program.*",
+      ".*sap_create_class.*",
+      ".*sap_update_class.*",
+      ".*sap_create_interface.*",
+      ".*sap_update_interface.*",
+      ".*sap_update_function_module.*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A SAP write operation just completed. If the tool was sap_create_program, sap_update_program_source, sap_create_class, sap_update_class_source, sap_create_interface, sap_update_interface_source, or sap_update_function_module_source, immediately run sap_syntax_check on the object URI. Report any syntax errors found. If the tool was something else (read, search, transport), do nothing."
+  },
+  "workspaceFolderName": "sap-abap-mcp-workspace",
+  "shortName": "syntax-after-write"
+}

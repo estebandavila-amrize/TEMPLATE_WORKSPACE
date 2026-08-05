@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Remind Verification",
+  "description": "When the agent finishes executing work, check if there are implemented objects that haven't been verified yet. Prompt the user to invoke the verify skill before marking the step complete or releasing the transport.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check if the last conversation involved implementing ABAP code (creating or updating programs, classes, interfaces, FMs in SAP). If it did, remind the user: 'Code was pushed to SAP. Run #verify against the micro-spec before marking this step complete or releasing the transport.' If the last conversation was just reading/searching/planning, say nothing."
+  },
+  "workspaceFolderName": "sap-abap-mcp-workspace",
+  "shortName": "remind-verify"
+}

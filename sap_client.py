@@ -103,7 +103,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             lock_result = self._lock_object(object_uri, csrf_token)
             if not lock_result.get("ok"):
@@ -186,7 +186,7 @@ class SAPADTClient:
             return {
                 "ok": resp.status_code == 200,
                 "status": resp.status_code,
-                "message": "Conexión exitosa a SAP ADT" if resp.status_code == 200 else resp.text[:200],
+                "message": "Successfully connected to SAP ADT" if resp.status_code == 200 else resp.text[:200],
             }
         except Exception as e:
             return {"ok": False, "status": 0, "message": str(e)}
@@ -294,7 +294,7 @@ class SAPADTClient:
         except Exception:
             pass
         return {"ok": False, "table": table_name,
-                "message": f"Tabla {table_name} no accesible via ADT DDIC endpoints."}
+                "message": f"Table {table_name} not accessible via ADT DDIC endpoints."}
 
     def get_transaction_info(self, transaction_name: str) -> dict:
         """Get transaction info (package, application)."""
@@ -397,13 +397,13 @@ class SAPADTClient:
         }
         if ot in ("function_module", "fm"):
             if not function_group:
-                return {"ok": False, "message": "function_group requerido para function_module"}
+                return {"ok": False, "message": "function_group is required for function_module"}
             fg = function_group.upper()
             src_path = f"/sap/bc/adt/functions/groups/{fg.lower()}/fmodules/{object_name.lower()}/source/main"
         else:
             src_path = path_map.get(ot)
         if not src_path:
-            return {"ok": False, "message": f"object_type no soportado: {object_type}"}
+            return {"ok": False, "message": f"Unsupported object_type: {object_type}"}
 
         try:
             # Fetch CSRF from the source endpoint
@@ -411,7 +411,7 @@ class SAPADTClient:
             resp_csrf = self.session.get(full_url, headers={"X-CSRF-Token": "Fetch", "Accept": "text/plain"}, timeout=15)
             token = resp_csrf.headers.get("X-CSRF-Token") or resp_csrf.headers.get("x-csrf-token")
             if not token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token para where-used"}
+                return {"ok": False, "message": "Failed to obtain CSRF token for where-used"}
 
             uri_param = f"{src_path}?version=active#start=1,0"
             body = (
@@ -474,7 +474,7 @@ class SAPADTClient:
                         enh_url += f"?context={context}"
 
             if not enh_url:
-                return {"ok": False, "message": f"Objeto {object_name} no encontrado como programa ni include"}
+                return {"ok": False, "message": f"Object {object_name} not found as program or include"}
 
             resp_enh = self.session.get(
                 enh_url,
@@ -508,7 +508,7 @@ class SAPADTClient:
     def get_sql_query(self, sql_query: str, max_rows: int = 100) -> dict:
         """Execute freestyle SQL via ADT Data Preview. Covers both table contents and complex queries."""
         if not sql_query:
-            return {"ok": False, "message": "sql_query es requerido"}
+            return {"ok": False, "message": "sql_query is required"}
         try:
             resp = self._post_with_csrf(
                 "/sap/bc/adt/datapreview/freestyle",
@@ -567,7 +567,7 @@ class SAPADTClient:
         """Recursively discover all INCLUDEs within a program or include."""
         object_name = object_name.upper()
         if object_type not in ("program", "include"):
-            return {"ok": False, "message": "object_type debe ser 'program' o 'include'"}
+            return {"ok": False, "message": "object_type must be 'program' or 'include'"}
 
         def _fetch_src(name: str, ot: str) -> str:
             if ot == "program":
@@ -623,7 +623,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             create_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -669,7 +669,7 @@ class SAPADTClient:
         result = self._write_source(object_url, source_code, transport)
         if result.get("ok"):
             result["program"] = program_name
-            result["message"] = "Código fuente actualizado"
+            result["message"] = "Source code updated"
         return result
 
     def update_program_from_file(self, program_name: str, file_path: str, transport: str = "") -> dict:
@@ -679,17 +679,17 @@ class SAPADTClient:
                 base_dir = os.path.dirname(os.path.abspath(__file__))
                 file_path = os.path.join(base_dir, file_path)
             if not os.path.exists(file_path):
-                return {"ok": False, "message": f"Archivo no encontrado: {file_path}"}
+                return {"ok": False, "message": f"File not found: {file_path}"}
             with open(file_path, "r", encoding="utf-8") as f:
                 source_code = f.read()
             if not source_code.strip():
-                return {"ok": False, "message": f"Archivo vacío: {file_path}"}
+                return {"ok": False, "message": f"Empty file: {file_path}"}
             line_count = source_code.count("\n") + 1
             result = self.update_program_source(program_name, source_code, transport)
             if result.get("ok"):
                 result["file_path"] = file_path
                 result["lines_uploaded"] = line_count
-                result["message"] = f"Código fuente actualizado desde archivo ({line_count} líneas)"
+                result["message"] = f"Source code updated from file ({line_count} lines)"
             return result
         except Exception as e:
             return {"ok": False, "message": str(e)}
@@ -703,7 +703,7 @@ class SAPADTClient:
         result = self._write_source(object_url, source_code, transport)
         if result.get("ok"):
             result["function"] = function_name.upper()
-            result["message"] = "Código fuente del FM actualizado"
+            result["message"] = "FM source code updated"
         return result
 
     def create_interface(self, interface_name: str, description: str, package: str,
@@ -713,7 +713,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             create_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -769,7 +769,7 @@ class SAPADTClient:
         result = self._write_source(object_url, source_code, transport)
         if result.get("ok"):
             result["interface"] = interface_name
-            result["message"] = "Código fuente actualizado"
+            result["message"] = "Source code updated"
         return result
 
     def create_structure(self, structure_name: str, description: str, package: str,
@@ -787,7 +787,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             # Step 1: Try creating via POST with blues content type
             create_xml = (
@@ -855,7 +855,7 @@ class SAPADTClient:
         result = self._write_source(object_url, source_code, transport)
         if result.get("ok"):
             result["structure"] = structure_name
-            result["message"] = "Estructura actualizada"
+            result["message"] = "Structure updated"
         return result
 
     def create_class(self, class_name: str, description: str, package: str,
@@ -865,7 +865,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             final_attr = "true" if is_final else "false"
             create_xml = (
@@ -944,7 +944,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             definition, implementation = self._split_class_source(source_code)
 
@@ -967,7 +967,7 @@ class SAPADTClient:
             )
             if resp.status_code in (200, 204):
                 self._unlock_object(object_url, lock_handle, csrf_token)
-                return {"ok": True, "class": class_name, "message": "Código fuente actualizado via /source/main"}
+                return {"ok": True, "class": class_name, "message": "Source code updated via /source/main"}
 
             # Unlock from failed attempt
             self._unlock_object(object_url, lock_handle, csrf_token)
@@ -995,7 +995,7 @@ class SAPADTClient:
                 if not impl_result.get("ok"):
                     return {"ok": False, "step": "write_implementations", "detail": impl_result}
 
-            return {"ok": True, "class": class_name, "message": "Código fuente actualizado"}
+            return {"ok": True, "class": class_name, "message": "Source code updated"}
         except Exception as e:
             return {"ok": False, "message": str(e)}
 
@@ -1006,7 +1006,7 @@ class SAPADTClient:
     def patch_source(self, object_uri: str, operations: list, transport: str = "") -> dict:
         """Apply patch operations to ABAP source without replacing the entire file."""
         if not object_uri or not operations:
-            return {"ok": False, "message": "object_uri y operations son requeridos"}
+            return {"ok": False, "message": "object_uri and operations are required"}
         try:
             source_url = object_uri if "/source/main" in object_uri else f"{object_uri}/source/main"
             resp = self.session.get(self._url(source_url), headers={"Accept": "text/plain"}, timeout=30)
@@ -1069,11 +1069,11 @@ class SAPADTClient:
     def delete_object(self, object_uri: str, transport: str = "") -> dict:
         """Delete an ABAP object. IRREVERSIBLE."""
         if not object_uri:
-            return {"ok": False, "message": "object_uri es requerido"}
+            return {"ok": False, "message": "object_uri is required"}
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             lock_result = self._lock_object(object_uri, csrf_token)
             if not lock_result.get("ok"):
@@ -1103,7 +1103,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             activate_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -1121,7 +1121,7 @@ class SAPADTClient:
             if resp.status_code in (200, 204):
                 has_errors = "severity=\"error\"" in resp.text.lower() if resp.text else False
                 return {"ok": not has_errors, "object": object_name,
-                        "message": "Activado exitosamente" if not has_errors else "Activación con errores",
+                        "message": "Activated successfully" if not has_errors else "Activation with errors",
                         "detail": resp.text[:500] if has_errors else ""}
             return {"ok": False, "status": resp.status_code, "message": resp.text[:500]}
         except Exception as e:
@@ -1132,7 +1132,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             check_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -1189,7 +1189,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             run_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -1232,12 +1232,14 @@ class SAPADTClient:
 
     def create_transport(self, description: str, request_type: str = "K", target: str = "") -> dict:
         """Create a transport request (Workbench or Customizing)."""
+        cts_project = os.environ.get("SAP_CTS_PROJECT", "")
+        transport_layer = os.environ.get("SAP_TRANSPORT_LAYER", "")
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
-            ref_uri = "/sap/bc/adt/programs/includes/zsdr_daily_invoice_report_f01"
+            ref_uri = "/sap/bc/adt/cts/transports"
             check_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
                 '<asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">'
@@ -1263,6 +1265,8 @@ class SAPADTClient:
                 end = check_resp.text.index("</DEVCLASS>")
                 devclass = check_resp.text[start:end].strip()
 
+            # Build CTS_PROJECT element only if configured
+            cts_project_xml = f'<CTS_PROJECT>{cts_project}</CTS_PROJECT>' if cts_project else ''
             create_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
                 '<asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">'
@@ -1271,9 +1275,13 @@ class SAPADTClient:
                 f'<REQUEST_TEXT>{description}</REQUEST_TEXT>'
                 f'<REF>{ref_uri}</REF>'
                 '<OPERATION>I</OPERATION>'
-                '<CTS_PROJECT>BZD_P00001</CTS_PROJECT>'
+                f'{cts_project_xml}'
                 '</DATA></asx:values></asx:abap>'
             )
+            params = {}
+            if transport_layer:
+                params["transportLayer"] = transport_layer
+
             resp = self.session.post(
                 self._url("/sap/bc/adt/cts/transports"),
                 data=create_xml.encode("utf-8"),
@@ -1282,7 +1290,7 @@ class SAPADTClient:
                     "Accept": "text/plain",
                     "Content-Type": "application/vnd.sap.as+xml; charset=UTF-8; dataname=com.sap.adt.CreateCorrectionRequest",
                 },
-                params={"transportLayer": "FSBPRLZT"},
+                params=params if params else None,
                 timeout=30,
             )
             if resp.status_code in (200, 201):
@@ -1318,7 +1326,7 @@ class SAPADTClient:
                         transports.append({"number": number, "owner": owner,
                                            "description": desc, "status": status, "target": target_sys})
             except ET.ParseError:
-                return {"ok": False, "message": "Error parseando XML de transports"}
+                return {"ok": False, "message": "Error parsing transport XML"}
             return {"ok": True, "count": len(transports), "transports": transports}
         except Exception as e:
             return {"ok": False, "message": str(e)}
@@ -1370,9 +1378,9 @@ class SAPADTClient:
                                               "description": task_desc, "status": task_status, "objects": objects})
                         return {"ok": True, "transport": transport_number, "owner": owner,
                                 "description": desc, "status": status, "target": target_sys, "tasks": tasks}
-                return {"ok": False, "message": f"OT {transport_number} no encontrada en la lista de transportes visibles"}
+                return {"ok": False, "message": f"Transport {transport_number} not found in visible transport list"}
             except ET.ParseError as e:
-                return {"ok": False, "message": f"Error parseando XML: {str(e)}"}
+                return {"ok": False, "message": f"Error parsing XML: {str(e)}"}
         except Exception as e:
             return {"ok": False, "message": str(e)}
 
@@ -1388,7 +1396,7 @@ class SAPADTClient:
             start_marker = f'tm:number="{transport_number}"'
             idx = xml_text.find(start_marker)
             if idx == -1:
-                return {"ok": False, "message": f"OT {transport_number} no encontrada en el XML"}
+                return {"ok": False, "message": f"Transport {transport_number} not found in XML"}
             fragment = xml_text[max(0, idx - 50): idx + 3000]
             return {"ok": True, "transport": transport_number, "xml_fragment": fragment, "total_xml_size": len(xml_text)}
         except Exception as e:
@@ -1400,7 +1408,7 @@ class SAPADTClient:
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             url = self._url(f"/sap/bc/adt/cts/transportrequests/{transport_number}/newreleasejobs")
             resp = self.session.post(
@@ -1417,7 +1425,7 @@ class SAPADTClient:
                 status = details.get("status", "")
                 released = status.upper() in ("R", "L", "RELEASED")
                 return {"ok": True, "transport": transport_number, "released": released, "status": status,
-                        "warning": "" if released else "ADT retornó 200 pero el transporte sigue modificable."}
+                        "warning": "" if released else "ADT returned 200 but transport is still modifiable."}
             return {"ok": True, "transport": transport_number, "released": True, "note": "Released but could not verify status"}
         except Exception as e:
             return {"ok": False, "message": str(e)}
@@ -1425,12 +1433,12 @@ class SAPADTClient:
     def add_to_transport(self, object_uri: str, transport_number: str) -> dict:
         """Register an ABAP object in a transport request."""
         if not object_uri or not transport_number:
-            return {"ok": False, "message": "object_uri y transport_number son requeridos"}
+            return {"ok": False, "message": "object_uri and transport_number are required"}
         transport_number = transport_number.upper()
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             check_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
@@ -1462,11 +1470,11 @@ class SAPADTClient:
         """Create a task under an existing transport request."""
         parent_transport = parent_transport.upper()
         if not parent_transport or not description:
-            return {"ok": False, "message": "parent_transport y description son requeridos"}
+            return {"ok": False, "message": "parent_transport and description are required"}
         try:
             csrf_token = self._fetch_csrf_token()
             if not csrf_token:
-                return {"ok": False, "message": "No se pudo obtener CSRF token"}
+                return {"ok": False, "message": "Failed to obtain CSRF token"}
 
             task_owner = owner.upper() if owner else self.username.upper()
             create_xml = (

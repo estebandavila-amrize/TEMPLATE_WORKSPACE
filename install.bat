@@ -6,9 +6,13 @@ color 0A
 :: ============================================================
 :: EDIT THIS after you create your new GitHub repo, so
 :: teammates running this installer clone from the right place.
-:: Leave blank to skip cloning and just scaffold a local folder.
+:: Leave blank to copy from the local template folder instead.
 :: ============================================================
 set REPO_URL=
+
+:: Detect where this installer lives (= the template source)
+set TEMPLATE_DIR=%~dp0
+set TEMPLATE_DIR=%TEMPLATE_DIR:~0,-1%
 
 echo.
 echo ============================================================
@@ -16,19 +20,17 @@ echo   SAP MCP Workspace Installer
 echo   Kiro + SAP ADT (spec-driven ABAP development)
 echo ============================================================
 echo.
-echo This will set up your local development workspace with:
-echo   - Python MCP Server (SAP ADT connection)
-echo   - Kiro steering files (tech + product rules)
-echo   - Skills (plan + execute + verify)
-echo   - Change template structure
-echo   - MCP server configuration
+echo This will set up your local development workspace by copying
+echo the template structure and generating your SAP credentials.
+echo.
+echo Template source: %TEMPLATE_DIR%
 echo.
 
 :: ============================================================
 :: 1. CHECK PREREQUISITES
 :: ============================================================
 
-echo [1/6] Checking prerequisites...
+echo [1/5] Checking prerequisites...
 
 where python >nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -43,7 +45,7 @@ echo   Python: %PYVER%
 
 where git >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo WARNING: Git is not installed. You will need to copy the workspace manually.
+    echo WARNING: Git is not installed. Template will be copied via xcopy.
     set GIT_AVAILABLE=0
 ) else (
     echo   Git: Available
@@ -54,10 +56,10 @@ echo   OK
 echo.
 
 :: ============================================================
-:: 2. COLLECT WORKSPACE + SYSTEM INFO
+:: 2. COLLECT WORKSPACE NAME + SAP CREDENTIALS
 :: ============================================================
 
-echo [2/6] Workspace
+echo [2/5] Workspace target
 echo.
 
 set /p WORKSPACE_NAME="  Workspace folder name [sap-mcp-workspace]: "
@@ -65,10 +67,13 @@ if "!WORKSPACE_NAME!"=="" set WORKSPACE_NAME=sap-mcp-workspace
 set WORKSPACE=%USERPROFILE%\!WORKSPACE_NAME!
 
 echo.
-echo [2/6] Primary SAP system
+echo   Target: !WORKSPACE!
 echo.
 
-set /p SYS1_ID="  System ID (e.g. DEV, BZD, QAS): "
+echo [2/5] Primary SAP system
+echo.
+
+set /p SYS1_ID="  System ID (e.g. DEV, QAS): "
 if "!SYS1_ID!"=="" (
     echo ERROR: System ID is required.
     pause
@@ -103,274 +108,106 @@ if "!SAP_USER!"=="" (
     exit /b 1
 )
 
-:: Use PowerShell to securely read password (hides input)
+:: Use PowerShell to securely read password (hides input) and escape % for batch
 echo   Enter your SAP password (input hidden):
-for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set SAP_PASS=%%p
+for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p)); $plain -replace '%%','%%%%'"') do set "SAP_PASS=%%p"
 
 if "!SAP_PASS!"=="" (
     echo ERROR: SAP password is required.
     pause
     exit /b 1
 )
+echo   Password captured OK.
 
 echo.
 set /p INSTALL_SYS2="  Configure a second SAP system (e.g. a sandbox)? (Y/N) [N]: "
-if /i "!INSTALL_SYS2!"=="Y" (
-    echo.
-    echo   Second SAP system
-    set /p SYS2_ID="    System ID: "
-    set /p SYS2_NAME="    System label: "
-    if "!SYS2_NAME!"=="" set SYS2_NAME=!SYS2_ID!
-    set /p SYS2_HOST="    SAP host: "
-    set /p SYS2_PORT="    ADT port [8000]: "
-    if "!SYS2_PORT!"=="" set SYS2_PORT=8000
-    set /p SYS2_CLIENT="    SAP client: "
-    set /p SYS2_PACKAGE="    Default Z-package [$TMP]: "
-    if "!SYS2_PACKAGE!"=="" set SYS2_PACKAGE=$TMP
-    set /p SYS2_TEAM="    Team/owner label [none]: "
-    set /p SYS2_CTS_PROJECT="    CTS project ID, only if required [none]: "
-    set /p SYS2_TRANSPORT_LAYER="    Transport layer, only if required [none]: "
-    set /p SAP_USER_SYS2="    Username [same as primary]: "
-    if "!SAP_USER_SYS2!"=="" set SAP_USER_SYS2=!SAP_USER!
-    echo     Enter password (input hidden):
-    for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set SAP_PASS_SYS2=%%p
-)
+if /i not "!INSTALL_SYS2!"=="Y" goto :SKIP_SYS2
 
 echo.
-echo [2/6] Project context (fills the Kiro steering files)
-echo.
-set /p BUSINESS_DOMAIN="  Business domain (e.g. \"Finance module enhancements\"): "
-if "!BUSINESS_DOMAIN!"=="" set BUSINESS_DOMAIN=[Fill in your business domain]
-set /p NETWEAVER_VERSION="  Target NetWeaver version [7.50]: "
-if "!NETWEAVER_VERSION!"=="" set NETWEAVER_VERSION=7.50
+echo   Second SAP system
+set /p SYS2_ID="    System ID: "
+set /p SYS2_NAME="    System label: "
+if "!SYS2_NAME!"=="" set "SYS2_NAME=!SYS2_ID!"
+set /p SYS2_HOST="    SAP host: "
+set /p SYS2_PORT="    ADT port [8000]: "
+if "!SYS2_PORT!"=="" set "SYS2_PORT=8000"
+set /p SYS2_CLIENT="    SAP client: "
+set /p SYS2_PACKAGE="    Default Z-package [$TMP]: "
+if "!SYS2_PACKAGE!"=="" set "SYS2_PACKAGE=$TMP"
+set /p SYS2_TEAM="    Team/owner label [none]: "
+set /p SYS2_CTS_PROJECT="    CTS project ID, only if required [none]: "
+set /p SYS2_TRANSPORT_LAYER="    Transport layer, only if required [none]: "
+set /p SAP_USER_SYS2="    Username [same as primary]: "
+if "!SAP_USER_SYS2!"=="" set "SAP_USER_SYS2=!SAP_USER!"
+echo     Enter password (input hidden):
+for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p)); $plain -replace '%%','%%%%'"') do set "SAP_PASS_SYS2=%%p"
+
+:SKIP_SYS2
 
 echo.
+echo   DEBUG: Passed second-system question, proceeding to step 3...
 
 :: ============================================================
-:: 3. SET UP WORKSPACE DIRECTORY
+:: 3. COPY TEMPLATE INTO WORKSPACE
 :: ============================================================
 
-echo [3/6] Setting up workspace at %WORKSPACE%...
+echo [3/5] Setting up workspace at !WORKSPACE!...
+echo   DEBUG: TEMPLATE_DIR=!TEMPLATE_DIR!
+echo   DEBUG: WORKSPACE=!WORKSPACE!
+echo   DEBUG: REPO_URL=!REPO_URL!
 
-if exist "%WORKSPACE%" (
-    echo   Workspace already exists. Updating files...
+if exist "!WORKSPACE!" (
+    echo   Workspace folder already exists. Merging template files...
 ) else (
-    if not "%REPO_URL%"=="" if %GIT_AVAILABLE%==1 (
-        echo   Cloning repository...
-        git clone %REPO_URL% "%WORKSPACE%" 2>nul
-        if %ERRORLEVEL% neq 0 (
-            echo   Git clone failed. Creating workspace manually...
-            mkdir "%WORKSPACE%"
-        )
-    ) else (
-        mkdir "%WORKSPACE%"
+    echo   Creating folder: !WORKSPACE!
+    mkdir "!WORKSPACE!"
+    if !ERRORLEVEL! neq 0 (
+        echo   ERROR: Failed to create workspace folder.
+        pause
+        exit /b 1
     )
 )
 
-:: ============================================================
-:: 4. CREATE .kiro STRUCTURE
-:: ============================================================
+:: Decide clone vs local copy
+echo   DEBUG: Checking clone vs local copy...
+if "!REPO_URL!"=="" goto :LOCAL_COPY
+if "!GIT_AVAILABLE!"=="0" goto :LOCAL_COPY
 
-echo [4/6] Creating Kiro workspace structure...
+echo   Cloning from !REPO_URL!...
+git clone "!REPO_URL!" "!WORKSPACE!" 2>nul
+if !ERRORLEVEL! equ 0 goto :COPY_DONE
+echo   Clone failed. Falling back to local copy...
 
-set KIRO=%WORKSPACE%\.kiro
-mkdir "%KIRO%\steering" 2>nul
-mkdir "%KIRO%\skills" 2>nul
-mkdir "%KIRO%\docs" 2>nul
-mkdir "%KIRO%\specs\_template_CHG\micro-specs" 2>nul
-mkdir "%KIRO%\hooks" 2>nul
+:LOCAL_COPY
+:: Local copy using robocopy (excludes .git, credentials, and this installer)
+echo   Copying template from !TEMPLATE_DIR! to !WORKSPACE!...
+robocopy "!TEMPLATE_DIR!" "!WORKSPACE!" /E /XD ".git" "__pycache__" /XF "config-systems.json" "install.bat" /NFL /NDL /R:2 /W:1
+echo   DEBUG: robocopy exit code=!ERRORLEVEL!
 
-:: --- steering/tech.md ---
-(
-echo # Global Technical Constraints
-echo.
-echo - Target Environment: SAP NetWeaver !NETWEAVER_VERSION!.
-echo - ABAP Rules: Strict classic ABAP syntax. Inline declarations ^(DATA, FIELD-SYMBOLS^) are permitted. NO ABAP Cloud, RAP, or Steampunk syntax.
-echo - DDIC Rules: Use classical Dictionary objects ^(SE11^).
-echo - Python MCP Rules: Flat input schemas for tools ^(no top-level Union, oneOf, or anyOf^).
-) > "%KIRO%\steering\tech.md"
+:: Remove .kiro/settings if it got copied (may contain credentials from template dev)
+if exist "!WORKSPACE!\.kiro\settings" rmdir /s /q "!WORKSPACE!\.kiro\settings" 2>nul
 
-:: --- steering/product.md ---
-(
-echo # Global Product Context
-echo.
-echo - Objective: Python-based Model Context Protocol ^(MCP^) server interfacing with SAP NetWeaver !NETWEAVER_VERSION!.
-echo - Business Domain: !BUSINESS_DOMAIN!
-echo - Development Standard: All modifications are tracked via Change Requests ^(CHGxxxxxx^) and WRICEF IDs. Objects must be grouped into designated Z-packages corresponding to their WRICEF ID.
-) > "%KIRO%\steering\product.md"
-
-:: --- skills/plan.md ---
-(
-echo # Skill: Plan
-echo.
-echo ## Context
-echo - Always read: `.kiro/steering/product.md`, `.kiro/specs/{CHG_ID}/WRICEF.md`, `.kiro/specs/{CHG_ID}/VISION.md`
-echo - Always modify: `.kiro/specs/{CHG_ID}/ROADMAP.md`
-echo.
-echo ## Objective
-echo Act as an ABAP Solution Architect. Review the functional requirements in VISION.md and the WRICEF metadata. Generate a step-by-step technical implementation checklist in ROADMAP.md. Break down the requirements into necessary ABAP objects. Ensure all planned objects belong inside the target WRICEF package. Do not generate code.
-echo.
-echo ## Halt gate
-echo Present the roadmap and stop. Do not begin execution until the user replies with the literal string `ROADMAP_APPROVED`.
-) > "%KIRO%\skills\plan.md"
-
-:: --- skills/execute.md ---
-(
-echo # Skill: Execute
-echo.
-echo ## Context
-echo - Always read: `.kiro/steering/tech.md`, `.kiro/specs/{CHG_ID}/WRICEF.md`, and the targeted Micro-Spec file.
-echo.
-echo ## Objective
-echo Act as a Senior ABAP Developer. Read the provided micro-spec and implement the exact ABAP or Python syntax requested. Ensure all custom objects align structurally with the package specified in WRICEF.md. Ensure strict compliance with the NetWeaver constraints outlined in tech.md.
-echo On completion, hand off to the `verify` skill. Do not self-certify the implementation as correct.
-) > "%KIRO%\skills\execute.md"
-
-:: --- skills/verify.md ---
-(
-echo # Skill: Verify
-echo.
-echo ## Context
-echo - Always read: `.kiro/specs/{CHG_ID}/VISION.md`, `.kiro/specs/{CHG_ID}/WRICEF.md`, the targeted Micro-Spec file, and the implemented object^(s^) it produced.
-echo.
-echo ## Objective
-echo Act as an independent ABAP reviewer. Re-derive correctness from VISION.md and the micro-spec, not from the executor's own reasoning. Check for swallowed failures ^(TRY/CATCH absorbing an exception, ignored SY-SUBRC^) and mechanism mismatches ^(an object whose name/comment claims one behavior but does another^). Confirm package/tech.md compliance. State PASS or FAIL explicitly with the specific lines it's based on.
-echo.
-echo ## Output
-echo Append a dated entry to VISION.md's Bug Tracking section. Do not run the push-to-GitHub hook, or mark the step complete, until this returns PASS.
-) > "%KIRO%\skills\verify.md"
-
-:: --- specs/_template_CHG/WRICEF.md ---
-(
-echo # Change Registry: CHG[Number]
-echo.
-echo ## SAP Metadata
-echo - WRICEF ID: [e.g., I002] ^([Description]^)
-echo - Target Package: Z[Module]_[WRICEF]
-echo - Transport Request: [TR Number]
-echo - Functional Consultant: [Name]
-echo.
-echo ## Object Inventory
-echo - [ ] [Object Type]: [Object Name] ^(New/Modified^)
-) > "%KIRO%\specs\_template_CHG\WRICEF.md"
-
-:: --- specs/_template_CHG/VISION.md ---
-(
-echo # Vision: Functional Specification for CHG[Number]
-echo.
-echo ## Business Goal
-echo [Insert functional requirements here]
-echo.
-echo ## Process Flow
-echo [Insert step-by-step business flow]
-echo.
-echo ## Bug Tracking ^(If applicable^)
-echo Each entry from `verify`: date, verdict, what was checked, root cause if FAIL, what changed.
-echo [Append entries here — do not overwrite prior ones]
-) > "%KIRO%\specs\_template_CHG\VISION.md"
-
-:: --- specs/_template_CHG/ROADMAP.md ---
-(
-echo # Technical Roadmap
-echo.
-echo ## Implementation Steps
-echo [To be populated by `plan`]
-echo.
-echo ## Approval
-echo Status: PENDING — reply `ROADMAP_APPROVED` to authorize execution.
-) > "%KIRO%\specs\_template_CHG\ROADMAP.md"
-
-:: --- specs/_template_CHG/micro-specs/_template-micro-spec.md ---
-(
-echo # Micro-Spec: [Object Name]
-echo.
-echo ## Roadmap Reference
-echo - Task mapping: [e.g., Step 1.1]
-echo.
-echo ## Technical Implementation
-echo - Target Object/File: [e.g., ZCL_CUSTOM_CLASS]
-echo - Inputs:
-echo - Outputs:
-echo - Logic:
-echo.
-echo ## Constraints
-echo - Adhere to tech.md rules ^(NetWeaver compatibility^).
-) > "%KIRO%\specs\_template_CHG\micro-specs\_template-micro-spec.md"
-
-:: --- hooks/push-to-github.kiro.hook ---
-(
-echo {
-echo   "enabled": true,
-echo   "name": "Push to GitHub",
-echo   "description": "Runs git add, commit, and push for all workspace changes.",
-echo   "version": "1",
-echo   "when": { "type": "userTriggered" },
-echo   "then": {
-echo     "type": "runCommand",
-echo     "command": "powershell -ExecutionPolicy Bypass -File scripts/git-push.ps1",
-echo     "timeout": 60
-echo   }
-echo }
-) > "%KIRO%\hooks\push-to-github.kiro.hook"
-
-:: --- config-systems.json (generated from your answers, not committed) ---
-(
-echo {
-echo   "systems": {
-echo     "!SYS1_ID!": {
-echo       "name": "!SYS1_NAME!",
-echo       "host": "!SYS1_HOST!",
-echo       "port": "!SYS1_PORT!",
-echo       "client": "!SYS1_CLIENT!",
-echo       "description": "!SYS1_NAME!",
-echo       "team": "!SYS1_TEAM!",
-echo       "default_package": "!SYS1_PACKAGE!",
-echo       "cts_project_management": true,
-echo       "allow_tmp": false
-echo     }
-) > "%WORKSPACE%\config-systems.json"
-
-if /i "!INSTALL_SYS2!"=="Y" (
-    (
-echo     ,"!SYS2_ID!": {
-echo       "name": "!SYS2_NAME!",
-echo       "host": "!SYS2_HOST!",
-echo       "port": "!SYS2_PORT!",
-echo       "client": "!SYS2_CLIENT!",
-echo       "description": "!SYS2_NAME!",
-echo       "team": "!SYS2_TEAM!",
-echo       "default_package": "!SYS2_PACKAGE!",
-echo       "cts_project_management": false,
-echo       "allow_tmp": true
-echo     }
-    ) >> "%WORKSPACE%\config-systems.json"
-)
-
-(
-echo   }
-echo }
-) >> "%WORKSPACE%\config-systems.json"
-
+:COPY_DONE
 echo   OK
+echo.
 
 :: ============================================================
-:: 5. CONFIGURE MCP SERVER
+:: 4. GENERATE CREDENTIAL FILES (gitignored)
 :: ============================================================
 
-echo [5/6] Configuring MCP server connection...
+echo [4/5] Generating credential files...
 
-set MCP_DIR=%USERPROFILE%\.kiro\settings
-mkdir "%MCP_DIR%" 2>nul
-
-:: Build mcp.json with user credentials
-set MCP_FILE=%MCP_DIR%\mcp.json
+:: --- .kiro/settings/mcp.json (workspace-level MCP config) ---
+set MCP_DIR=!WORKSPACE!\.kiro\settings
+mkdir "!MCP_DIR!" 2>nul
+set MCP_FILE=!MCP_DIR!\mcp.json
 
 (
 echo {
 echo   "mcpServers": {
 echo     "sap-!SYS1_ID!": {
 echo       "command": "python",
-echo       "args": ["%WORKSPACE:\=\\%\\server.py"],
+echo       "args": ["server.py"],
 echo       "env": {
 echo         "SAP_HOST": "!SYS1_HOST!:!SYS1_PORT!",
 echo         "SAP_CLIENT": "!SYS1_CLIENT!",
@@ -387,7 +224,6 @@ echo       "autoApprove": [
 echo         "sap_ping", "sap_get_program_source", "sap_get_include_source",
 echo         "sap_get_class_source", "sap_get_function_module_source",
 echo         "sap_search_objects", "sap_get_table_definition",
-echo         "sap_check_adt_capabilities", "sap_test_endpoint",
 echo         "sap_syntax_check", "sap_list_transports",
 echo         "sap_get_transport_details", "sap_get_transport_xml_raw",
 echo         "sap_run_abap_unit", "sap_create_program",
@@ -398,14 +234,14 @@ echo         "sap_update_function_module_source", "sap_create_transport",
 echo         "sap_activate_object"
 echo       ]
 echo     }
-) > "%MCP_FILE%"
+) > "!MCP_FILE!"
 
 if /i "!INSTALL_SYS2!"=="Y" (
     (
 echo     ,
 echo     "sap-!SYS2_ID!": {
 echo       "command": "python",
-echo       "args": ["%WORKSPACE:\=\\%\\server.py"],
+echo       "args": ["server.py"],
 echo       "env": {
 echo         "SAP_HOST": "!SYS2_HOST!:!SYS2_PORT!",
 echo         "SAP_CLIENT": "!SYS2_CLIENT!",
@@ -425,21 +261,59 @@ echo         "sap_search_objects", "sap_get_table_definition",
 echo         "sap_syntax_check", "sap_run_abap_unit"
 echo       ]
 echo     }
-    ) >> "%MCP_FILE%"
+    ) >> "!MCP_FILE!"
 )
 
 (
 echo   }
 echo }
-) >> "%MCP_FILE%"
+) >> "!MCP_FILE!"
+
+:: --- config-systems.json (not committed) ---
+(
+echo {
+echo   "systems": {
+echo     "!SYS1_ID!": {
+echo       "name": "!SYS1_NAME!",
+echo       "host": "!SYS1_HOST!",
+echo       "port": "!SYS1_PORT!",
+echo       "client": "!SYS1_CLIENT!",
+echo       "description": "!SYS1_NAME!",
+echo       "team": "!SYS1_TEAM!",
+echo       "default_package": "!SYS1_PACKAGE!",
+echo       "cts_project_management": true,
+echo       "allow_tmp": false
+echo     }
+) > "!WORKSPACE!\config-systems.json"
+
+if /i "!INSTALL_SYS2!"=="Y" (
+    (
+echo     ,"!SYS2_ID!": {
+echo       "name": "!SYS2_NAME!",
+echo       "host": "!SYS2_HOST!",
+echo       "port": "!SYS2_PORT!",
+echo       "client": "!SYS2_CLIENT!",
+echo       "description": "!SYS2_NAME!",
+echo       "team": "!SYS2_TEAM!",
+echo       "default_package": "!SYS2_PACKAGE!",
+echo       "cts_project_management": false,
+echo       "allow_tmp": true
+echo     }
+    ) >> "!WORKSPACE!\config-systems.json"
+)
+
+(
+echo   }
+echo }
+) >> "!WORKSPACE!\config-systems.json"
 
 echo   OK
 
 :: ============================================================
-:: 6. INSTALL PYTHON DEPENDENCIES
+:: 5. INSTALL PYTHON DEPENDENCIES
 :: ============================================================
 
-echo [6/6] Installing Python dependencies...
+echo [5/5] Installing Python dependencies...
 
 pip install -q mcp requests 2>nul
 if %ERRORLEVEL% neq 0 (
@@ -457,13 +331,25 @@ echo ============================================================
 echo   INSTALLATION COMPLETE
 echo ============================================================
 echo.
-echo   Workspace: %WORKSPACE%
-echo   MCP Config: %MCP_FILE%
-echo   System Config: %WORKSPACE%\config-systems.json (not committed — see .gitignore)
+echo   Workspace: !WORKSPACE!
+echo   MCP Config: !MCP_FILE!
+echo   System Config: !WORKSPACE!\config-systems.json (not committed)
+echo.
+echo   What was copied from template:
+echo     - server.py, sap_client.py (MCP server)
+echo     - .kiro/steering/ (tech + product rules)
+echo     - .kiro/skills/ (plan, execute, verify, ABAP reference)
+echo     - .kiro/hooks/ (automation hooks)
+echo     - .kiro/specs/_template_CHG/ (change request templates)
+echo     - .gitignore, README.md, docs/
+echo.
+echo   What was generated (credentials, gitignored):
+echo     - .kiro/settings/mcp.json
+echo     - config-systems.json
 echo.
 echo   Next steps:
 echo     1. Open Kiro
-echo     2. File ^> Open Folder ^> %WORKSPACE%
+echo     2. File ^> Open Folder ^> !WORKSPACE!
 echo     3. Restart Kiro to load the MCP server
 echo     4. Type "Verify connection with SAP !SYS1_ID!" in chat
 echo.
@@ -471,7 +357,7 @@ echo   To start a new change request:
 echo     1. Copy .kiro\specs\_template_CHG to .kiro\specs\CHG04XXXXX
 echo     2. Fill WRICEF.md and VISION.md
 echo     3. Activate #plan to generate the roadmap, reply ROADMAP_APPROVED
-echo     4. Create micro-specs, activate #execute, then #verify before transport release
+echo     4. Create micro-specs, activate #execute, then #verify
 echo.
 echo ============================================================
 pause

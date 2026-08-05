@@ -1,25 +1,20 @@
-# SAP ABAP Development Skill
+# SAP ABAP Development Skill — ECC 6.0 EHP8
 
-Comprehensive ABAP development skill for SAP systems covering classic ABAP and modern ABAP Cloud development patterns.
+ABAP development skill tuned for **SAP ECC 6.0 EHP8** (NetWeaver 7.50, ABAP 7.50, non-HANA database).
 
-## Skill Overview
+## System Scope
 
-This skill provides extensive knowledge for ABAP development including:
-
-- **Internal Tables**: Standard, sorted, hashed tables; keys; operations; LOOP, READ, MODIFY
-- **ABAP SQL**: SELECT, INSERT, UPDATE, DELETE, JOINs, CTEs, hierarchies, aggregate functions
-- **Object-Oriented ABAP**: Classes, interfaces, inheritance, polymorphism, design patterns
-- **Constructor Expressions**: VALUE, NEW, CONV, CORRESPONDING, COND, SWITCH, REDUCE, FILTER
-- **Dynamic Programming**: Field symbols, data references, RTTI, RTTC
-- **String Processing**: String functions, templates, FIND, REPLACE, regex
-- **RAP (RESTful Application Programming Model)**: EML statements, BDEF, handler methods
-- **CDS View Entities**: Annotations, associations, expressions
-- **ABAP Unit Testing**: Test classes, assertions, test doubles
-- **Exception Handling**: TRY-CATCH, exception classes, messages
-- **ABAP Cloud Development**: Released APIs, restrictions, migration patterns
-- **Authorization**: AUTHORITY-CHECK, CDS access control, DCL
-- **ABAP Dictionary**: Data elements, domains, structures, table types
-- **Generative AI**: ABAP AI SDK, LLM integration
+| Available | NOT Available |
+|-----------|---------------|
+| ABAP 7.50 (inline DATA, constructor expressions) | CDS Views |
+| Open SQL (SELECT, JOIN, FOR ALL ENTRIES) | AMDP |
+| Classic OO (classes, interfaces, inheritance) | RAP / EML |
+| ABAP Unit testing | ABAP Cloud / Steampunk |
+| RTTI / RTTC / dynamic programming | XCO Library |
+| SE11 DDIC (tables, structures, domains) | WITH (CTE) in SQL |
+| Classic BAdIs, user-exits, enhancements | HIERARCHY expressions |
+| Function Modules / Function Groups | Generative AI SDK |
+| SAPscript, Smartforms, Adobe Forms | FINAL(x) declarations |
 
 ## Auto-Trigger Keywords
 
@@ -43,7 +38,7 @@ This skill activates when discussing:
 
 ### Constructor Expressions
 - VALUE, NEW, CONV, CORRESPONDING, CAST, REF
-- COND, SWITCH, EXACT
+- COND, SWITCH
 - REDUCE, FILTER, FOR
 - constructor expression, inline declaration
 - OPTIONAL, DEFAULT, BASE
@@ -57,49 +52,26 @@ This skill activates when discussing:
 - event, RAISE EVENT, SET HANDLER
 - factory pattern, singleton, strategy pattern
 
-### RAP and Modern ABAP
-- RAP, RESTful Application Programming Model
-- EML, Entity Manipulation Language
-- MODIFY ENTITIES, READ ENTITIES, COMMIT ENTITIES
-- BDEF, behavior definition, handler method, saver method
-- managed, unmanaged, draft
-- %cid, %control, %tky, mapped, failed, reported
-- global authorization, instance authorization
-
-### CDS Views
-- CDS, Core Data Services, CDS view entity
-- define view entity, association, composition
-- annotation, @UI, @Semantics
-- input parameter, $session
-- DCL, access control, define role
-
-### ABAP SQL
-- ABAP SQL, SELECT, FROM, WHERE, INTO TABLE
+### Open SQL
+- Open SQL, SELECT, FROM, WHERE, INTO TABLE
 - INNER JOIN, LEFT OUTER JOIN, RIGHT OUTER JOIN
 - GROUP BY, HAVING, ORDER BY
 - aggregate function, COUNT, SUM, AVG, MIN, MAX
-- FOR ALL ENTRIES, subquery, CTE
-- HIERARCHY, HIERARCHY_DESCENDANTS, HIERARCHY_ANCESTORS
+- FOR ALL ENTRIES, subquery
+- UP TO n ROWS, PACKAGE SIZE
 
 ### Dynamic Programming
 - field symbol, ASSIGN, UNASSIGN, IS ASSIGNED
 - data reference, REF TO, CREATE DATA, dereference
 - RTTI, RTTC, cl_abap_typedescr, cl_abap_structdescr
 - dynamic SQL, dynamic method call
-- CASTING, BIT-NOT, BIT-AND
+- CASTING
 
 ### String Processing
 - string, string template, string function
 - FIND, REPLACE, CONCATENATE, SPLIT
 - to_upper, to_lower, strlen, substring
 - PCRE, regular expression, regex, pattern matching
-
-### Numeric Operations
-- numeric, calculation, arithmetic
-- cl_abap_bigint, cl_abap_rational
-- ROUND, CEIL, FLOOR, TRUNC
-- decfloat16, decfloat34
-- ipow, sqrt, exp, log
 
 ### Testing
 - ABAP Unit, test class, FOR TESTING
@@ -113,29 +85,20 @@ This skill activates when discussing:
 - cx_root, cx_static_check, cx_dynamic_check
 - exception class, get_text
 
-### ABAP Cloud
-- ABAP Cloud, ABAP for Cloud Development
-- released API, XCO library
-- SAP BTP ABAP Environment
-- cloud-ready, upgrade-stable
-
 ### Authorization
 - AUTHORITY-CHECK, authorization object
 - ACTVT, activity code
-- access control, DCL, role
-- pfcg_auth, aspect
+- pfcg_auth
 
 ### ABAP Dictionary
 - data element, domain, structure
 - table type, database table
-- DDIC, dictionary type
-- CDS simple type, CDS enum
+- DDIC, dictionary type, SE11
 
-### Generative AI
-- AI SDK, generative AI, LLM
-- cl_aic_islm_compl_api_factory
-- intelligent scenario, prompt template
-- Joule, ABAP AI
+### Enhancements
+- BAdI, user-exit, enhancement point
+- enhancement spot, enhancement implementation
+- SMOD, CMOD, SE18, SE19, SE80
 
 ### Errors and Debugging
 - sy-subrc, sy-tabix, sy-index
@@ -146,33 +109,26 @@ This skill activates when discussing:
 ## Directory Structure
 
 ```
-sap-abap/
+ABAP/
 ├── SKILL.md                        # Main skill file with quick reference
-├── README.md                       # This file (keywords for discoverability)
-└── references/                     # Detailed reference files (28 files)
+├── README.md                       # This file
+└── references/                     # Detailed reference files
     ├── abap-dictionary.md          # DDIC objects, types
-    ├── abap-sql.md                 # ABAP SQL comprehensive guide
-    ├── amdp.md                     # ABAP Managed Database Procedures
-    ├── authorization.md            # Authorization checks, DCL
-    ├── bits-bytes.md               # Binary operations, CASTING
+    ├── abap-sql.md                 # Open SQL guide (ignore CTE sections)
+    ├── authorization.md            # Authorization checks
+    ├── bits-bytes.md               # Binary operations
     ├── builtin-functions.md        # String, numeric, table functions
-    ├── cds-views.md                # CDS view entities
-    ├── cloud-development.md        # ABAP Cloud specifics
     ├── constructor-expressions.md  # Constructor operators
-    ├── date-time.md                # Date, time, timestamps, XCO
+    ├── date-time.md                # Classic date/time patterns
     ├── design-patterns.md          # Factory, Singleton, Strategy
     ├── dynamic-programming.md      # RTTI, RTTC, field symbols
     ├── exceptions.md               # Exception handling
-    ├── generative-ai.md            # AI SDK integration
     ├── internal-tables.md          # Complete table operations
-    ├── numeric-operations.md       # Math functions, big integers
+    ├── numeric-operations.md       # Math functions
     ├── object-orientation.md       # OO programming patterns
-    ├── performance.md              # Database, internal table optimization
+    ├── performance.md              # DB and itab optimization
     ├── program-flow.md             # IF, CASE, LOOP, DO, WHILE
-    ├── rap-eml.md                  # RAP and EML reference
-    ├── released-classes.md         # Released API catalog
-    ├── sap-luw.md                  # Logical Unit of Work, transactions
-    ├── sql-hierarchies.md          # CTE hierarchies, navigators
+    ├── sap-luw.md                  # Logical Unit of Work
     ├── string-processing.md        # String functions and regex
     ├── table-grouping.md           # GROUP BY loops
     ├── unit-testing.md             # ABAP Unit framework
@@ -180,35 +136,25 @@ sap-abap/
     └── xml-json.md                 # XML/JSON processing
 ```
 
-## Usage
-
-Ask Claude about any ABAP development topic:
-
-- "How do I create a sorted internal table with multiple keys?"
-- "What's the syntax for EML CREATE operations in RAP?"
-- "Show me how to use CORRESPONDING with field mapping"
-- "How do I handle exceptions in ABAP?"
-- "What's the difference between ABAP Cloud and classic ABAP?"
-- "How do I implement the factory pattern in ABAP?"
-- "What are the released classes for date/time in ABAP Cloud?"
-- "How do I integrate generative AI in ABAP?"
-
-## Source Documentation
-
-Content based on official SAP ABAP Cheat Sheets:
-- **Repository**: [https://github.com/SAP-samples/abap-cheat-sheets](https://github.com/SAP-samples/abap-cheat-sheets)
-- **SAP Help**: [https://help.sap.com/doc/abapdocu_latest_index_htm/latest/en-US/index.htm](https://help.sap.com/doc/abapdocu_latest_index_htm/latest/en-US/index.htm)
+**Files NOT applicable to this system** (kept for reference only):
+- `references/amdp.md` — Requires HANA
+- `references/cds-views.md` — Requires HANA/S4
+- `references/cloud-development.md` — Requires BTP
+- `references/rap-eml.md` — Requires S/4HANA
+- `references/released-classes.md` — Cloud-only APIs
+- `references/generative-ai.md` — Requires BTP
+- `references/sql-hierarchies.md` — Requires HANA
 
 ## Version
 
-- **Skill Version**: 2.1.0
-- **Last Updated**: 2025-11-23
-- **ABAP Release**: Latest (7.5x / Cloud)
-- **Reference Files**: 28
-- **Source Coverage**: 91% (31 of 34 source files)
+- **Skill Version**: 2.0.0
+- **Last Updated**: 2026-07-28
+- **Target ABAP Release**: 7.50 (ECC 6.0 EHP8)
+- **Database**: Non-HANA (traditional DB)
+- **Applicable Reference Files**: 21 of 28
 
 ---
 
 ## License
 
-GPL-3.0 License - See LICENSE file in repository root.
+GPL-3.0 License
