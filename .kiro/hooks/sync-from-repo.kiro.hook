@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Sync From Template Repo",
+  "description": "Manually triggered hook that pulls the latest hooks, skills, steering, and workspace definitions from the shared GitHub template repo (estebandavila-amrize/TEMPLATE_WORKSPACE).",
+  "version": "1.0.0",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The user wants to sync workspace definitions from the remote template repo. Activate the #sync-from-repo skill and follow its procedure: fetch from https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE, diff syncable files (.kiro/skills, .kiro/steering, .kiro/hooks, .kiro/specs/_template_CHG, .kiro/settings, root config files, server.py, sap_client.py), show a summary of changes, then wait for PULL_APPROVED before applying."
+  },
+  "workspaceFolderName": "TEMPLATE_WORKSPACE",
+  "shortName": "sync-from-repo"
+}

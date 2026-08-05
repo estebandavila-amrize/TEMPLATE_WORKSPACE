@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Sync To Template Repo",
+  "description": "Manually triggered hook that pushes the latest workspace definitions (hooks, skills, steering, specs template, settings, root configs) to the shared GitHub template repo.",
+  "version": "1.0.0",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The user wants to push workspace definitions to the remote template repo. Activate the #sync-template skill and follow its procedure: verify the git remote points to https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE, stage only syncable files, show a diff summary, then wait for SYNC_APPROVED before committing and pushing."
+  },
+  "workspaceFolderName": "TEMPLATE_WORKSPACE",
+  "shortName": "sync-to-repo"
+}
