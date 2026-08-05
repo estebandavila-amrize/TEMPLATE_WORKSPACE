@@ -10,19 +10,20 @@ description: |
 
 ## Context
 - Always read: `.kiro/steering/`, `.kiro/skills/`, `.kiro/hooks/`, `.kiro/specs/_template_CHG/`
-- Target: `%USERPROFILE%\TEMPLATE_WORKSPACE\.kiro\`
+- Target: `https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE`
 
 ## Objective
-Extract generic, reusable improvements from the current workspace and push them to the template repo. This keeps the template evolving with real-world learnings without polluting it with project-specific data.
+Extract generic, reusable improvements from the current workspace and push them to the shared GitHub template repo. This keeps the template evolving with real-world learnings without polluting it with project-specific data.
 
 ## What TO sync (template-worthy)
-- `.kiro/skills/*/SKILL.md` - skill definitions (all of them)
-- `.kiro/skills/ABAP/SKILL.md` and `references/` - ABAP knowledge base
-- `.kiro/steering/*.md` - all steering rules
-- `.kiro/hooks/*.kiro.hook` - all hook definitions
-- `.kiro/specs/_template_CHG/` - the CHG template structure
-- `.kiro/settings/mcp.json` - workspace-level MCP config (server definitions)
-- Root config files: `config-systems.example.json`, `requirements.txt`, `docs/`
+- `.kiro/skills/*/SKILL.md` — skill definitions (all of them)
+- `.kiro/skills/ABAP/SKILL.md` and `references/` — ABAP knowledge base
+- `.kiro/steering/*.md` — all steering rules
+- `.kiro/hooks/*.kiro.hook` — all hook definitions
+- `.kiro/specs/_template_CHG/` — the CHG template structure
+- `.kiro/settings/mcp.json` — workspace-level MCP config (server definitions)
+- Root config files: `config-systems.example.json`, `requirements.txt`, `install.bat`, `docs/`
+- `server.py`, `sap_client.py` — MCP server source
 
 ## What NOT to sync (project-specific)
 - Any `.kiro/specs/` folder other than `_template_CHG`
@@ -31,20 +32,73 @@ Extract generic, reusable improvements from the current workspace and push them 
 - `VISION.md` with Bug Tracking entries from real incidents
 - `config-systems.json` (contains real credentials/endpoints)
 - Any transport numbers, order numbers, or CHG-specific data
+- `__pycache__/`, `.git/`
 
 ## Procedure
-1. List all files in the workspace's `.kiro/` tree.
-2. For each syncable category above, compare content with the template repo target.
-3. If the workspace version is newer/different, overwrite the template version.
-4. If the workspace has NEW files in syncable categories that don't exist in template, add them.
-5. If the template has files that were DELETED in workspace (syncable categories only), remove them from template.
-6. Report a summary: files added, updated, removed, unchanged.
+
+1. **Verify remote** — Ensure the workspace has `origin` pointing to the template repo:
+   ```
+   git remote get-url origin
+   ```
+   Expected: `https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE.git`
+   If missing or different, set it:
+   ```
+   git remote set-url origin https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE.git
+   ```
+
+2. **Fetch latest** — Ensure local main is up to date:
+   ```
+   git fetch origin main
+   ```
+
+3. **Create feature branch** — Branch off `origin/main` with a timestamped name:
+   ```
+   git checkout -b sync/update-YYYYMMDD-HHMM origin/main
+   ```
+   Use the current date/time for the branch name (e.g., `sync/update-20260805-1430`).
+
+4. **Stage syncable files** — Add only template-worthy files:
+   ```
+   git add .kiro/skills/ .kiro/steering/ .kiro/hooks/ .kiro/specs/_template_CHG/ .kiro/settings/mcp.json config-systems.example.json requirements.txt install.bat docs/ server.py sap_client.py
+   ```
+
+5. **Diff staged** — Show what will be committed:
+   ```
+   git diff --cached --stat
+   ```
+
+6. **Halt gate** — Present the summary and STOP. Wait for user confirmation with `SYNC_APPROVED`.
+
+7. **Commit** — After approval:
+   ```
+   git commit -m "sync: update workspace definitions from project"
+   ```
+
+8. **Push branch** — Push the feature branch to the remote:
+   ```
+   git push -u origin sync/update-YYYYMMDD-HHMM
+   ```
+
+9. **Create Pull Request** — Open a PR against `main` using the GitHub CLI:
+   ```
+   gh pr create --base main --head sync/update-YYYYMMDD-HHMM --title "sync: update workspace definitions" --body "Automated sync of workspace definitions (hooks, skills, steering, specs template, settings, root configs) from project workspace."
+   ```
+
+10. **Return to previous branch** — Switch back to the branch the user was on:
+    ```
+    git checkout -
+    ```
+
+11. **Confirm** — Report success, the PR URL, and the list of files included.
 
 ## Safety rules
-- NEVER sync files containing real SAP credentials, transport numbers, or customer data.
-- NEVER sync spec folders with real CHG IDs (only `_template_CHG`).
-- If unsure whether something is project-specific, ASK the user before syncing.
-- Always show a dry-run summary before writing to the template repo.
+- NEVER commit files containing real SAP credentials, transport numbers, or customer data.
+- NEVER commit spec folders with real CHG IDs (only `_template_CHG`).
+- NEVER push directly to `main`. Always use a feature branch + Pull Request.
+- NEVER force-push. If push is rejected, inform the user and suggest pulling first.
+- If unsure whether something is project-specific, ASK the user before staging.
+- Always show a dry-run summary (staged diff) before committing.
+- Requires `gh` CLI to be installed and authenticated for PR creation.
 
 ## Halt gate
-Present the list of changes to be applied and STOP. Do not write to the template repo until the user confirms with `SYNC_APPROVED`.
+Present the list of staged changes and STOP. Do not commit or push until the user confirms with `SYNC_APPROVED`.
