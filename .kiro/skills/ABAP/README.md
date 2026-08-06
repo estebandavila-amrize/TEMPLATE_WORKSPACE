@@ -6,15 +6,16 @@ ABAP development skill tuned for **SAP ECC 6.0 EHP8** (NetWeaver 7.50, ABAP 7.50
 
 | Available | NOT Available |
 |-----------|---------------|
-| ABAP 7.50 (inline DATA, constructor expressions) | CDS Views |
-| Open SQL (SELECT, JOIN, FOR ALL ENTRIES) | AMDP |
-| Classic OO (classes, interfaces, inheritance) | RAP / EML |
-| ABAP Unit testing | ABAP Cloud / Steampunk |
-| RTTI / RTTC / dynamic programming | XCO Library |
-| SE11 DDIC (tables, structures, domains) | WITH (CTE) in SQL |
-| Classic BAdIs, user-exits, enhancements | HIERARCHY expressions |
-| Function Modules / Function Groups | Generative AI SDK |
-| SAPscript, Smartforms, Adobe Forms | FINAL(x) declarations |
+| ABAP 7.50 (inline DATA, constructor expressions) | AMDP |
+| Open SQL (SELECT, JOIN, FOR ALL ENTRIES) | RAP / EML |
+| Classic OO (classes, interfaces, inheritance) | ABAP Cloud / Steampunk |
+| ABAP Unit testing | XCO Library |
+| RTTI / RTTC / dynamic programming | WITH (CTE) in SQL |
+| SE11 DDIC (tables, structures, domains) | HIERARCHY expressions |
+| Classic BAdIs, user-exits, enhancements | Generative AI SDK |
+| Function Modules / Function Groups | FINAL(x) declarations |
+| SAPscript, Smartforms, Adobe Forms | CDS views with HANA-specific functions/annotations |
+| CDS View Entities (classic, non-HANA-specific) | |
 
 ## Auto-Trigger Keywords
 
@@ -138,20 +139,21 @@ ABAP/
 
 **Files NOT applicable to this system** (kept for reference only):
 - `references/amdp.md` — Requires HANA
-- `references/cds-views.md` — Requires HANA/S4
 - `references/cloud-development.md` — Requires BTP
 - `references/rap-eml.md` — Requires S/4HANA
 - `references/released-classes.md` — Cloud-only APIs
 - `references/generative-ai.md` — Requires BTP
 - `references/sql-hierarchies.md` — Requires HANA
 
+`references/cds-views.md` IS applicable — classic CDS view entities work without HANA. Skip only the HANA-specific SQL functions and OLAP/analytics annotations within that file.
+
 ## Version
 
-- **Skill Version**: 2.0.0
-- **Last Updated**: 2026-07-28
+- **Skill Version**: 2.1.0
+- **Last Updated**: 2026-08-06
 - **Target ABAP Release**: 7.50 (ECC 6.0 EHP8)
 - **Database**: Non-HANA (traditional DB)
-- **Applicable Reference Files**: 21 of 28
+- **Applicable Reference Files**: 22 of 28
 
 ---
 

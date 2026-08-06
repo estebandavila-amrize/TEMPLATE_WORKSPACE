@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "name": "ECC 7.5 Tech Guardrail",
-  "description": "Before writing ABAP code to SAP, scan the source_code argument for forbidden patterns: CDS view syntax, AMDP METHOD BY DATABASE, RAP/EML keywords (MODIFY ENTITIES, READ ENTITIES), ABAP Cloud syntax (FINAL(x)), WITH (CTE). Block the write if violations are found.",
+  "description": "Before writing ABAP code to SAP, scan the source_code argument for forbidden patterns: AMDP METHOD BY DATABASE, RAP/EML keywords (MODIFY ENTITIES, READ ENTITIES), ABAP Cloud syntax (FINAL(x)), WITH (CTE), and HANA-specific CDS features. Classic CDS view entities without HANA-specific features are allowed. Block the write if violations are found.",
   "version": "1",
   "when": {
     "type": "preToolUse",
@@ -17,7 +17,7 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Inspect the source_code parameter being sent to SAP. Check for these FORBIDDEN patterns that do NOT exist on ECC 7.5 EHP8: (1) 'BY DATABASE PROCEDURE' or 'BY DATABASE FUNCTION' (AMDP), (2) 'MODIFY ENTITIES' or 'READ ENTITIES' or 'COMMIT ENTITIES' (RAP/EML), (3) 'define view entity' or 'define root view entity' (CDS), (4) 'FINAL(' as inline declaration (7.57+), (5) 'WITH +' followed by SELECT (CTE syntax). If ANY violation is found, state ACCESS DENIED and list the violations. If the code is clean classic ABAP, state ACCESS GRANTED."
+    "prompt": "Inspect the source_code parameter being sent to SAP. Check for these FORBIDDEN patterns that do NOT exist on ECC 7.5 EHP8 (this system has NO HANA database): (1) 'BY DATABASE PROCEDURE' or 'BY DATABASE FUNCTION' (AMDP), (2) 'MODIFY ENTITIES' or 'READ ENTITIES' or 'COMMIT ENTITIES' (RAP/EML), (3) 'FINAL(' as inline declaration (7.57+), (4) 'WITH +' followed by SELECT (CTE syntax), (5) if the code contains 'define view entity' or 'define root view entity' (CDS view entity), it is ALLOWED as long as it does NOT use HANA-specific built-in SQL functions, OLAP/analytics annotations, or any feature that requires the HANA calculation engine or code pushdown — flag the CDS view as a violation ONLY if such HANA-specific features are present. If ANY violation is found, state ACCESS DENIED and list the violations. If the code is clean classic ABAP (including a HANA-free CDS view entity), state ACCESS GRANTED."
   },
   "workspaceFolderName": "sap-abap-mcp-workspace",
   "shortName": "tech-guardrail"

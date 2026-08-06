@@ -34,7 +34,8 @@ Use this reference BEFORE writing any ABAP code for Amrize. It contains:
 - **Company**: Amrize BP (formerly Holcim BP) — construction materials
 - **System**: BZD — SAP ECC 6.0 EHP8 (client 130), ABAP 7.50 SP19
 - **Database**: Non-HANA (traditional DB)
-- **NOT available**: S/4HANA, ABAP Cloud, CDS views, AMDP, RAP
+- **NOT available**: S/4HANA, ABAP Cloud, AMDP, RAP, and any CDS feature requiring HANA (OLAP/analytics annotations, HANA-specific SQL functions, code pushdown)
+- **Available with limitations**: Classic ABAP CDS view entities (DEFINE VIEW ENTITY) — usable without HANA for standard read views/associations
 - **CTS**: Project Management active — OTs must be created manually in SE09
 - **Sandbox**: BZN (client 100) — available via MCP
 - **Modules**: SD, MM, FI, PP, WM + CRM ↔ ECC + Salesforce via Mulesoft
