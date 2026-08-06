@@ -94,7 +94,7 @@ Only plan objects available on ECC 7.5 EHP8:
 - SAPscript / Smartforms / Adobe Forms
 - Transactions (SE93)
 
-Do NOT plan: CDS views, AMDP, RAP behavior definitions, service bindings, Fiori annotation-driven UIs.
+Do NOT plan: AMDP, RAP behavior definitions, service bindings, Fiori annotation-driven UIs, or CDS views relying on HANA-specific functions/annotations (OLAP, code pushdown). Classic CDS view entities without HANA-specific features may be planned when appropriate.
 
 ## Safety
 - Never overwrite an existing CHG folder.

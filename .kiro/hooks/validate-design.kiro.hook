@@ -11,7 +11,7 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Read the requirements.md in the same CHG folder as the design.md that was just edited. Cross-check: (1) every requirement and acceptance criterion in requirements.md has at least one corresponding task in tasks.md or object in design.md's Object Breakdown, (2) no object in design.md references CDS views, AMDP, RAP, EML, ABAP Cloud, or any tech unavailable on ECC 7.5 EHP8. Report any gaps or violations found. If everything aligns, confirm the design covers all requirements."
+    "prompt": "Read the requirements.md in the same CHG folder as the design.md that was just edited. Cross-check: (1) every requirement and acceptance criterion in requirements.md has at least one corresponding task in tasks.md or object in design.md's Object Breakdown, (2) no object in design.md references AMDP, RAP, EML, ABAP Cloud, or any tech unavailable on ECC 7.5 EHP8 (no HANA database) — note that classic CDS view entities ARE allowed as long as they avoid HANA-specific functions/annotations. Report any gaps or violations found. If everything aligns, confirm the design covers all requirements."
   },
   "shortName": "validate-design"
 }

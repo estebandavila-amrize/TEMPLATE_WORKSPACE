@@ -20,11 +20,11 @@ description: |
 ## Objective
 Act as an ABAP Solution Architect for SAP ECC 6.0 EHP8 (NetWeaver 7.50). Starting from the approved design.md, perform three actions:
 
-1. **Refine design.md** — Add any missing details, validate object choices against tech.md constraints, flesh out Design Decisions if incomplete.
+1. **Refine design.md** â€” Add any missing details, validate object choices against tech.md constraints, flesh out Design Decisions if incomplete.
 
-2. **Derive requirements.md** — From the design's Overview, Architecture, and Object Breakdown, derive formal requirements with user stories and testable acceptance criteria. Replace the placeholder content.
+2. **Derive requirements.md** â€” From the design's Overview, Architecture, and Object Breakdown, derive formal requirements with user stories and testable acceptance criteria. Replace the placeholder content.
 
-3. **Generate tasks.md** — Break down the Object Breakdown into numbered implementation tasks with specifications, dependencies, and checkboxes.
+3. **Generate tasks.md** â€” Break down the Object Breakdown into numbered implementation tasks with specifications, dependencies, and checkboxes.
 
 ## requirements.md Structure
 
@@ -49,7 +49,7 @@ Act as an ABAP Solution Architect for SAP ECC 6.0 EHP8 (NetWeaver 7.50). Startin
 - [ ] AC 1.2: [testable criterion]
 
 ## Verification Log
-[Append-only audit trail from #verify — do not overwrite prior entries]
+[Append-only audit trail from #verify â€” do not overwrite prior entries]
 ```
 
 ## tasks.md Structure
@@ -84,7 +84,7 @@ Only plan objects available on ECC 7.5 EHP8:
 - SAPscript / Smartforms / Adobe Forms
 - Transactions (SE93)
 
-Do NOT plan: CDS views, AMDP, RAP behavior definitions, service bindings, Fiori annotation-driven UIs.
+Do NOT plan: AMDP, RAP behavior definitions, service bindings, Fiori annotation-driven UIs, or CDS views relying on HANA-specific functions/annotations (OLAP, code pushdown). Classic CDS view entities without HANA-specific features may be planned when appropriate.
 
 Ensure all objects belong in the target package from design.md's SAP Context section.
 

@@ -2,19 +2,23 @@
 name: sap-abap
 description: |
   ABAP development skill for SAP ECC 6.0 EHP8 (NetWeaver 7.50, ABAP 7.50).
+  Also SAP CRM in version EHP4 FOR SAP CRM 7.0 
   Use when writing ABAP code, working with internal tables, structures, Open SQL,
   object-oriented programming, string processing, dynamic programming, RTTI/RTTC,
   field symbols, data references, exception handling, or ABAP unit testing.
-  This system does NOT have HANA, CDS views, RAP, EML, AMDP, or ABAP Cloud.
-  Only classic ABAP patterns are valid.
+  This system does NOT have HANA. Classic ABAP CDS view entities ARE available
+  (they compile to a standard SQL view on any DB) but HANA-specific CDS features,
+  AMDP, RAP, EML, and ABAP Cloud are NOT available.
+  Classic ABAP patterns are the default; CDS view entities may be used within limits.
 license: GPL-3.0
 metadata:
-  version: 2.0.0
-  last_updated: "2026-07-28"
+  version: 2.1.0
+  last_updated: "2026-08-06"
   target_system: "SAP ECC 6.0 EHP8 / NetWeaver 7.50 / ABAP 7.50"
   database: "Non-HANA (traditional DB)"
+  available_with_limitations:
+    - CDS view entities (DEFINE VIEW ENTITY) — classic, non-HANA-specific only
   unavailable_features:
-    - CDS views
     - AMDP (ABAP Managed Database Procedures)
     - RAP (RESTful Application Programming Model)
     - EML (Entity Manipulation Language)
@@ -24,6 +28,7 @@ metadata:
     - WITH (CTE) in Open SQL
     - HIERARCHY in Open SQL
     - FINAL(x) immutable inline declarations
+    - CDS views using HANA-specific SQL functions, OLAP/analytics annotations, or code pushdown that requires HANA
 ---
 # SAP ABAP Development Skill — ECC 7.5 EHP8
 
@@ -34,7 +39,6 @@ The database is **NOT SAP HANA**. The following features are **NOT AVAILABLE**:
 
 | Feature | Why Not |
 |---------|---------|
-| CDS Views | Requires HANA or S/4 |
 | AMDP | Requires HANA |
 | RAP / EML | Requires S/4HANA / BTP |
 | ABAP Cloud (Steampunk) | Requires BTP ABAP Environment |
@@ -43,6 +47,24 @@ The database is **NOT SAP HANA**. The following features are **NOT AVAILABLE**:
 | HIERARCHY expressions | Requires HANA |
 | FINAL(x) declarations | Requires ABAP 7.57+ |
 | Generative AI SDK | Requires BTP |
+| CDS views with HANA-specific functions/annotations (e.g. OLAP analytics, code pushdown) | Requires HANA |
+
+### CDS Views — Available WITH Limitations
+
+Classic ABAP CDS view entities (`DEFINE VIEW ENTITY`, available since ABAP 7.40) **ARE
+available** on this system. They compile to a standard database SQL view and run on any
+supported database — HANA is not required for the core CDS view mechanism. Use them for:
+- Reusable, semantically rich read views over one or more DDIC tables
+- Associations/joins declared once and reused across multiple SELECTs
+- Basic annotations (`@AbapCatalog`, `@AccessControl`, `@EndUserText`) for authorization and metadata
+
+Do NOT use CDS views for:
+- HANA-specific built-in SQL functions not portable to the underlying DB — verify in SE11/ADT before using any CDS built-in function
+- OLAP/analytical query views (Analytics Query, aggregation push-down) — these require the HANA calculation engine
+- Any annotation or feature explicitly documented as HANA-only in SAP Help
+- Code pushdown scenarios that assume AMDP or HANA procedures
+
+When in doubt, prefer a classic SE11 view or Open SQL JOIN — it is guaranteed to work on this system without HANA-specific risk.
 
 ## Table of Contents
 - [Quick Reference](#quick-reference)
@@ -401,10 +423,10 @@ The following reference files are relevant to your system:
 - `references/bits-bytes.md` — Binary operations
 - `references/where-conditions.md` — WHERE clause patterns
 - `references/table-grouping.md` — GROUP BY loops
+- `references/cds-views.md` — CDS View Entities (classic, non-HANA-specific parts only — see "CDS Views — Available WITH Limitations" above)
 
 **NOT applicable** (do not reference these on this system):
 - ~~references/amdp.md~~ — Requires HANA
-- ~~references/cds-views.md~~ — Requires HANA/S4
 - ~~references/cloud-development.md~~ — Requires BTP
 - ~~references/rap-eml.md~~ — Requires S/4HANA
 - ~~references/released-classes.md~~ — Cloud-only APIs

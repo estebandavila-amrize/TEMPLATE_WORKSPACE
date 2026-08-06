@@ -28,7 +28,8 @@ Act as a Senior ABAP Developer. Read the specified task from tasks.md and implem
 ## Constraints
 - Ensure all objects align with the package in WRICEF.md.
 - Strict compliance with ECC 7.5 EHP8 / NetWeaver 7.50 / ABAP 7.50 (see tech.md).
-- NEVER use: CDS views, AMDP, RAP/EML, ABAP Cloud syntax, WITH (CTE), HIERARCHY SQL, XCO library, FINAL(x).
+- NEVER use: AMDP, RAP/EML, ABAP Cloud syntax, WITH (CTE), HIERARCHY SQL, XCO library, FINAL(x), or CDS views relying on HANA-specific functions/annotations.
+- Classic CDS view entities (DEFINE VIEW ENTITY) without HANA-specific features ARE permitted when a design calls for one.
 - Use only Open SQL, classic BAdIs/enhancements, SE11 DDIC, and classic OO ABAP.
 - Ask no clarifying questions unless the spec is logically impossible.
 
