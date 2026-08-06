@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Validate Design",
+  "description": "When design.md is created or edited, cross-check it against requirements.md to ensure every requirement is covered by at least one task, and no object references technology unavailable on ECC 7.5 EHP8.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/design.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Read the requirements.md in the same CHG folder as the design.md that was just edited. Cross-check: (1) every requirement and acceptance criterion in requirements.md has at least one corresponding task in tasks.md or object in design.md's Object Breakdown, (2) no object in design.md references CDS views, AMDP, RAP, EML, ABAP Cloud, or any tech unavailable on ECC 7.5 EHP8. Report any gaps or violations found. If everything aligns, confirm the design covers all requirements."
+  },
+  "shortName": "validate-design"
+}

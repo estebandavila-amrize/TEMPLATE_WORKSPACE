@@ -46,14 +46,15 @@ Extract generic, reusable improvements from the current workspace and push them 
    git remote set-url origin https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE.git
    ```
 
-2. **Fetch latest** — Ensure local main is up to date:
+2. **Fetch latest** — Ensure local default branch is up to date:
    ```
-   git fetch origin main
+   git fetch origin master
    ```
+   Note: the default branch is `master`. If this fails, try `main` instead.
 
-3. **Create feature branch** — Branch off `origin/main` with a timestamped name:
+3. **Create feature branch** — Branch off `origin/master` with a timestamped name:
    ```
-   git checkout -b sync/update-YYYYMMDD-HHMM origin/main
+   git checkout -b sync/update-YYYYMMDD-HHMM origin/master
    ```
    Use the current date/time for the branch name (e.g., `sync/update-20260805-1430`).
 
@@ -79,10 +80,12 @@ Extract generic, reusable improvements from the current workspace and push them 
    git push -u origin sync/update-YYYYMMDD-HHMM
    ```
 
-9. **Create Pull Request** — Open a PR against `main` using the GitHub CLI:
+9. **Create Pull Request** — Open a PR against `master` using the GitHub CLI:
    ```
-   gh pr create --base main --head sync/update-YYYYMMDD-HHMM --title "sync: update workspace definitions" --body "Automated sync of workspace definitions (hooks, skills, steering, specs template, settings, root configs) from project workspace."
+   gh pr create --base master --head sync/update-YYYYMMDD-HHMM --title "sync: update workspace definitions" --body "Automated sync of workspace definitions (hooks, skills, steering, specs template, settings, root configs) from project workspace."
    ```
+   If `gh` is not installed, provide the user with the GitHub URL to create the PR manually:
+   `https://github.com/estebandavila-amrize/TEMPLATE_WORKSPACE/pull/new/sync/update-YYYYMMDD-HHMM`
 
 10. **Return to previous branch** — Switch back to the branch the user was on:
     ```
@@ -94,7 +97,7 @@ Extract generic, reusable improvements from the current workspace and push them 
 ## Safety rules
 - NEVER commit files containing real SAP credentials, transport numbers, or customer data.
 - NEVER commit spec folders with real CHG IDs (only `_template_CHG`).
-- NEVER push directly to `main`. Always use a feature branch + Pull Request.
+- NEVER push directly to `master` (or `main`). Always use a feature branch + Pull Request.
 - NEVER force-push. If push is rejected, inform the user and suggest pulling first.
 - If unsure whether something is project-specific, ASK the user before staging.
 - Always show a dry-run summary (staged diff) before committing.
