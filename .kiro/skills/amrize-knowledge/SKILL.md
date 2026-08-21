@@ -343,6 +343,58 @@ OBJECT, OBJ_NAME, UNAME, UDATE
 
 ---
 
+## 8b. BDT (Business Data Toolset) — Diagnostic Pattern
+
+Applies to **BP** (Business Partner, transaction `BP`), and any other BDT-based master
+data maintenance transaction built on `SAPLBUSS` (customer/vendor integration, etc.).
+
+### Symptom → Root Cause Pattern
+`DYNPRO_NOT_FOUND` dump in program `SAPLBUSS` (include `LBUSSO00`, typically module
+`PBO_START_SUBSCREEN` / `PBO_START_SUBSCREEN2`), referencing a screen number in the
+1000–7999 range, with **no custom code involved** (`SAPLBUSS` is 100% standard) →
+suspect a **missing generated Trägerdynpro (subscreen container)** before looking for
+a Z-development bug.
+
+### Why this happens
+BDT subscreen container screens (Trägerdynpros) of `SAPLBUSS` are **not transported**
+as fixed dynpros — they are generated per system/client dynamically from BDT
+customizing (views, applications, screen sequences). If the generation was never run
+(or ran incompletely) after an upgrade/support pack/customizing transport in a given
+system, the referenced screen number simply doesn't exist there — even though the
+same BP view works fine in another system (e.g. an older EHP where generation
+completed historically).
+
+### Diagnostic steps (read-only, via ADT SQL data preview)
+1. Find which BDT view owns the missing screen number: query `TBZ3A_TD` filtering
+   `TRDYN_HD = <screen>` or `TRDYN_DT = <screen>` → gives `OBJAP` + `DYNID` (view ID).
+2. Confirm the view's owning program: query `TBZ3E` with `OBJAP` + `SICHT = DYNID`.
+3. Confirm what screens actually exist in the target program: query `D020S` with
+   `PROG = 'SAPLBUSS'` → compare against the expected `TRDYN_HD`/`TRDYN_DT` numbers.
+   Missing numbers = confirmed generation gap.
+4. Check the pending-regeneration queue: query `TBZ3A_GEN` filtered by `OBJAP`. If
+   empty, the default "only pending screens" mode of the fix below will do nothing —
+   must force full regeneration.
+
+### Fix
+Run transaction **`BUSP`** (report `BUSCRCNT`, calls FM `BUS_SCR_CONTAINER_MAIN`) in
+the affected system:
+- **OBJAP**: the application found in step 1/2 (e.g. `BUPA`).
+- **DYNID**: optional — leave blank to cover the whole application, or restrict to
+  the specific view if narrowing scope.
+- **Generation mode**: select **"generate all selected screens"** (`p_xall`), NOT the
+  default "only registered/pending screens" mode — a gap with an empty `TBZ3A_GEN`
+  queue means the default mode regenerates nothing.
+- Do **NOT** check "delete all Trägerdynpros first" — that option only works with no
+  filters (whole system), unnecessarily broad for a targeted fix.
+- Low risk, reversible: it only rebuilds derived screen objects from existing
+  customizing, no business data is touched. Prefer running in a test client first if
+  available.
+
+### Reference
+Full investigation trail: `.kiro/specs/_research/analysis-bp-sales-area-dynpro-not-found-bze.md`
+
+---
+
 ## 9. Testability Rules (Non-Negotiable)
 
 1. Every public method has at least one test in `ZCL_<MOD>_<PROCESS>_TEST`
