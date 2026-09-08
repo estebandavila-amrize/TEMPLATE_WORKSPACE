@@ -1,0 +1,53 @@
+{
+  "_comment": "EXAMPLE ServiceNow MCP server entries. Copy these into your local .kiro/settings/mcp.json (which is gitignored) and fill SNOW_PASSWORD with real credentials. NEVER commit real passwords. Adjust the python.exe path and the workspace path to your machine.",
+  "mcpServers": {
+    "Service Now": {
+      "command": "C:\\Users\\<user>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "args": [
+        "C:\\Users\\<user>\\ANDRES-WORKSPACE\\servicenow_server.py"
+      ],
+      "cwd": "C:\\Users\\<user>\\ANDRES-WORKSPACE",
+      "env": {
+        "SNOW_INSTANCE": "https://oneservicena.service-now.com",
+        "SNOW_USER": "kiro_integration",
+        "SNOW_PASSWORD": "",
+        "SNOW_ENV": "PRD"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "snow_ping",
+        "snow_query",
+        "snow_get_record",
+        "snow_find_user",
+        "snow_list_attachments",
+        "snow_extract_docx"
+      ]
+    },
+    "Service Now QUAL": {
+      "command": "C:\\Users\\<user>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "args": [
+        "C:\\Users\\<user>\\ANDRES-WORKSPACE\\servicenow_server.py"
+      ],
+      "cwd": "C:\\Users\\<user>\\ANDRES-WORKSPACE",
+      "env": {
+        "SNOW_INSTANCE": "https://oneservicequalna.service-now.com",
+        "SNOW_USER": "test_kiro",
+        "SNOW_PASSWORD": "",
+        "SNOW_ENV": "QUAL"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "snow_ping",
+        "snow_query",
+        "snow_get_record",
+        "snow_find_user",
+        "snow_list_attachments",
+        "snow_extract_docx",
+        "snow_create_record",
+        "snow_update_record",
+        "snow_advance_state",
+        "snow_add_work_note"
+      ]
+    }
+  }
+}
