@@ -30,7 +30,7 @@ echo.
 :: 1. CHECK PREREQUISITES
 :: ============================================================
 
-echo [1/6] Checking prerequisites...
+echo [1/7] Checking prerequisites...
 
 where python >nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -70,6 +70,24 @@ if %ERRORLEVEL% equ 0 (
     set NODE_AVAILABLE=0
 )
 
+:: Portable GitHub CLI lives under LocalAppData (no admin / UAC required)
+set GH_HOME=%LOCALAPPDATA%\Programs\gh
+
+where gh >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    for /f "delims=" %%v in ('gh --version 2^>^&1 ^| findstr /r "gh version"') do set GHVER=%%v
+    echo   GitHub CLI: !GHVER!
+    set GH_AVAILABLE=1
+) else if exist "!GH_HOME!\bin\gh.exe" (
+    set "PATH=!GH_HOME!\bin;!PATH!"
+    for /f "delims=" %%v in ('gh --version 2^>^&1 ^| findstr /r "gh version"') do set GHVER=%%v
+    echo   GitHub CLI: !GHVER! (portable, %LOCALAPPDATA%\Programs\gh)
+    set GH_AVAILABLE=1
+) else (
+    echo   GitHub CLI: Not found (will be installed portably in step 7)
+    set GH_AVAILABLE=0
+)
+
 echo   OK
 echo.
 
@@ -77,7 +95,7 @@ echo.
 :: 2. COLLECT WORKSPACE NAME + SAP CREDENTIALS
 :: ============================================================
 
-echo [2/6] Workspace target
+echo [2/7] Workspace target
 echo.
 
 set /p WORKSPACE_NAME="  Workspace folder name [sap-mcp-workspace]: "
@@ -88,7 +106,7 @@ echo.
 echo   Target: !WORKSPACE!
 echo.
 
-echo [2/6] Primary SAP system
+echo [2/7] Primary SAP system
 echo.
 
 set /p SYS1_ID="  System ID (e.g. DEV, QAS): "
@@ -190,7 +208,7 @@ echo   DEBUG: Passed second-system question, proceeding to step 3...
 :: 3. COPY TEMPLATE INTO WORKSPACE
 :: ============================================================
 
-echo [3/6] Setting up workspace at !WORKSPACE!...
+echo [3/7] Setting up workspace at !WORKSPACE!...
 echo   DEBUG: TEMPLATE_DIR=!TEMPLATE_DIR!
 echo   DEBUG: WORKSPACE=!WORKSPACE!
 echo   DEBUG: REPO_URL=!REPO_URL!
@@ -234,7 +252,7 @@ echo.
 :: 4. GENERATE CREDENTIAL FILES (gitignored)
 :: ============================================================
 
-echo [4/6] Generating credential files...
+echo [4/7] Generating credential files...
 
 :: --- .kiro/settings/mcp.json (workspace-level MCP config) ---
 set MCP_DIR=!WORKSPACE!\.kiro\settings
@@ -410,7 +428,7 @@ echo   OK
 :: 5. INSTALL PYTHON DEPENDENCIES
 :: ============================================================
 
-echo [5/6] Installing Python dependencies...
+echo [5/7] Installing Python dependencies...
 
 pip install -q mcp requests 2>nul
 if %ERRORLEVEL% neq 0 (
@@ -424,7 +442,7 @@ if %ERRORLEVEL% neq 0 (
 :: ============================================================
 
 echo.
-echo [6/6] ServiceNow SDK (optional)
+echo [6/7] ServiceNow SDK (optional)
 echo.
 echo   The ServiceNow SDK (now-sdk) lets you query live ServiceNow
 echo   data (incidents, changes, RITM...) from the command line.
@@ -449,7 +467,7 @@ if "!NODE_AVAILABLE!"=="1" goto :SNOW_NPM
 echo   Node.js not found. Installing portable Node.js under %LOCALAPPDATA%\Programs\nodejs ...
 echo   (No administrator rights required.)
 set "NODE_VER=v24.19.0"
-powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { $ver='%NODE_VER%'; $dst='%LOCALAPPDATA%\Programs\nodejs'; $zip=Join-Path $env:TEMP ('node-'+$ver+'-win-x64.zip'); $url='https://nodejs.org/dist/'+$ver+'/node-'+$ver+'-win-x64.zip'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; $parent=Split-Path $dst -Parent; if(!(Test-Path $parent)){New-Item -ItemType Directory -Force -Path $parent ^| Out-Null}; if(Test-Path $dst){Remove-Item -Recurse -Force $dst}; Expand-Archive -Path $zip -DestinationPath $parent -Force; Rename-Item (Join-Path $parent ('node-'+$ver+'-win-x64')) $dst; Remove-Item $zip -Force; exit 0 } catch { Write-Error $_; exit 1 }"
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { $ver='%NODE_VER%'; $dst='%LOCALAPPDATA%\Programs\nodejs'; $zip=Join-Path $env:TEMP ('node-'+$ver+'-win-x64.zip'); $url='https://nodejs.org/dist/'+$ver+'/node-'+$ver+'-win-x64.zip'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; $parent=Split-Path $dst -Parent; if(!(Test-Path $parent)){New-Item -ItemType Directory -Force -Path $parent | Out-Null}; if(Test-Path $dst){Remove-Item -Recurse -Force $dst}; Expand-Archive -Path $zip -DestinationPath $parent -Force; Rename-Item (Join-Path $parent ('node-'+$ver+'-win-x64')) $dst; Remove-Item $zip -Force; exit 0 } catch { Write-Error $_; exit 1 }"
 if !ERRORLEVEL! neq 0 (
     echo   WARNING: Portable Node.js install failed.
     echo   Install Node.js manually ^(see docs\SERVICENOW_SDK_SETUP.md section 2^),
@@ -476,6 +494,42 @@ if !ERRORLEVEL! neq 0 (
 )
 
 :SKIP_SNOW
+echo.
+
+:: ============================================================
+:: 7. INSTALL GITHUB CLI (portable, no admin) — used by sync skills
+:: ============================================================
+
+echo [7/7] GitHub CLI (gh)
+echo.
+echo   The GitHub CLI (gh) lets the sync-from-repo and sync-template
+echo   skills open pull requests automatically. Installed portably under
+echo   %LOCALAPPDATA%\Programs\gh (no administrator rights required).
+echo.
+
+set GH_INSTALLED=0
+if "!GH_AVAILABLE!"=="1" (
+    echo   GitHub CLI already available. Skipping install.
+    set GH_INSTALLED=1
+    goto :SKIP_GH
+)
+
+echo   Installing portable GitHub CLI ...
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { $ProgressPreference='SilentlyContinue'; $dst=\"$env:LOCALAPPDATA\Programs\gh\"; $rel=Invoke-RestMethod -Uri 'https://api.github.com/repos/cli/cli/releases/latest' -Headers @{'User-Agent'='kiro-installer'} -UseBasicParsing; $asset=$rel.assets | Where-Object { $_.name -match 'windows_amd64\.zip$' } | Select-Object -First 1; if(-not $asset){throw 'no windows_amd64 asset found'}; $zip=Join-Path $env:TEMP $asset.name; Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing; if(Test-Path $dst){Remove-Item -Recurse -Force $dst}; New-Item -ItemType Directory -Force -Path $dst | Out-Null; Expand-Archive -Path $zip -DestinationPath $dst -Force; Remove-Item $zip -Force; $bin=Join-Path $dst 'bin'; $u=[Environment]::GetEnvironmentVariable('Path','User'); if($u -notlike ('*'+$bin+'*')){[Environment]::SetEnvironmentVariable('Path', ($u.TrimEnd(';')+';'+$bin), 'User')}; exit 0 } catch { Write-Error $_; exit 1 }"
+if !ERRORLEVEL! neq 0 (
+    echo   WARNING: GitHub CLI install failed. Sync skills will fall back to a manual PR URL.
+    echo   You can install it later from https://cli.github.com/ or via: winget install GitHub.cli
+    goto :SKIP_GH
+)
+
+set "PATH=!GH_HOME!\bin;!PATH!"
+set GH_AVAILABLE=1
+set GH_INSTALLED=1
+for /f "delims=" %%v in ('gh --version 2^>^&1 ^| findstr /r "gh version"') do set GHVER=%%v
+echo   GitHub CLI installed: !GHVER! (portable, %LOCALAPPDATA%\Programs\gh)
+echo   NOTE: run 'gh auth login' once to enable automatic PR creation.
+
+:SKIP_GH
 echo.
 
 :: ============================================================
@@ -516,6 +570,15 @@ if /i "!INSTALL_SNOW!"=="Y" (
 ) else (
     echo   ServiceNow: not configured ^(optional^)
     echo     Re-run the installer or see docs\SERVICENOW_SDK_SETUP.md to add it later.
+    echo.
+)
+if "!GH_INSTALLED!"=="1" (
+    echo   GitHub CLI: available ^(gh^) — enables auto PR creation for sync skills
+    echo     Run 'gh auth login' once if you have not authenticated yet.
+    echo.
+) else (
+    echo   GitHub CLI: not installed — sync skills will fall back to a manual PR URL
+    echo     Install later from https://cli.github.com/ or via: winget install GitHub.cli
     echo.
 )
 echo   Next steps:
