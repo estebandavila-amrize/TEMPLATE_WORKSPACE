@@ -1,43 +1,43 @@
-# Guía de configuración del SDK de ServiceNow en Kiro
+# ServiceNow SDK Setup Guide for Kiro
 
-Guía paso a paso para dejar operativo el **ServiceNow SDK** (`@servicenow/sdk`, CLI `now-sdk`) dentro de Kiro / VS Code en Windows, autenticar contra las instancias de Amrize (QUAL y PRD) y consultar datos en vivo (incidents, changes, RITM, problems, etc.).
+Step-by-step guide to get the **ServiceNow SDK** (`@servicenow/sdk`, `now-sdk` CLI) working inside Kiro / VS Code on Windows, authenticate against the Amrize instances (QUAL and PRD), and query live data (incidents, changes, RITM, problems, etc.).
 
-> Validado en Windows con PowerShell. Todos los comandos se ejecutan en una terminal PowerShell.
+> Validated on Windows with PowerShell. All commands run in a PowerShell terminal.
 
 ---
 
-## 1. Contexto: qué es y qué NO es
+## 1. Context: what it is and what it is NOT
 
-- ServiceNow aquí funciona a través del **power `servicenow-sdk`**, que envuelve el CLI `@servicenow/sdk` (`now-sdk`). **No es un servidor MCP.**
-- El CLI se opera por línea de comandos; Kiro puede ejecutar esos comandos por ti.
-- Capacidades principales:
-  - **`now-sdk query`** — consulta de datos en vivo (SOLO LECTURA) sobre cualquier tabla.
-  - **`now-sdk explain`** — documentación integrada (cientos de topics).
-  - **`now-sdk auth`** — gestión de autenticación por instancia.
-  - Comandos de desarrollo de apps Fluent (`init`, `build`, `install`, etc.) — no necesarios para solo consultar.
+- ServiceNow here works through the **`servicenow-sdk` power**, which wraps the `@servicenow/sdk` CLI (`now-sdk`). **It is not an MCP server.**
+- The CLI is operated from the command line; Kiro can run those commands for you.
+- Main capabilities:
+  - **`now-sdk query`** — live data queries (READ ONLY) against any table.
+  - **`now-sdk explain`** — built-in documentation (hundreds of topics).
+  - **`now-sdk auth`** — authentication management per instance.
+  - Fluent app development commands (`init`, `build`, `install`, etc.) — not needed just to query.
 
-### Limitaciones importantes (confirmadas)
+### Important limitations (confirmed)
 
-| Capacidad | ¿Disponible con el SDK? |
+| Capability | Available with the SDK? |
 |-----------|-------------------------|
-| Consultar registros (incident, change, RITM, problem...) | ✅ Sí (`query`, solo lectura) |
-| Listar adjuntos de un registro | ✅ Sí (`query` sobre `sys_attachment`) |
-| **Crear** un change request u otro registro de negocio | ❌ No con `now-sdk`. Requiere Table API REST (`POST`). |
-| **Modificar / avanzar estados** de un registro | ❌ No con `now-sdk`. Requiere Table API REST (`PATCH`). |
-| Descargar el binario de un adjunto | ❌ No con `now-sdk`. Requiere Attachment API REST (`GET .../file`). |
-| Leer metadatos `sys_dictionary` / `sys_choice` | ⚠️ Depende de permisos del usuario (a menudo restringidos). |
+| Query records (incident, change, RITM, problem...) | ✅ Yes (`query`, read only) |
+| List attachments of a record | ✅ Yes (`query` against `sys_attachment`) |
+| **Create** a change request or other business record | ❌ Not with `now-sdk`. Requires the Table API REST (`POST`). |
+| **Modify / advance states** of a record | ❌ Not with `now-sdk`. Requires the Table API REST (`PATCH`). |
+| Download an attachment's binary | ❌ Not with `now-sdk`. Requires the Attachment API REST (`GET .../file`). |
+| Read `sys_dictionary` / `sys_choice` metadata | ⚠️ Depends on the user's permissions (often restricted). |
 
-> Para crear/modificar registros o descargar adjuntos se usa la **REST API de ServiceNow** con la misma autenticación básica (ver sección 8).
+> To create/modify records or download attachments, use the **ServiceNow REST API** with the same basic authentication (see section 8).
 
 ---
 
-## 2. Requisito previo: Node.js
+## 2. Prerequisite: Node.js
 
-El CLI corre sobre Node.js. Si `node`/`npm`/`npx` no están instalados:
+The CLI runs on Node.js. If `node`/`npm`/`npx` are not installed:
 
-### Opción recomendada (sin permisos de administrador)
+### Recommended option (no administrator privileges)
 
-Instalación portable de Node en el perfil del usuario:
+Portable Node installation in the user profile:
 
 ```powershell
 $ver = 'v24.19.0'
@@ -51,7 +51,7 @@ Expand-Archive -Path $zip -DestinationPath $env:USERPROFILE -Force
 Rename-Item "$env:USERPROFILE\node-$ver-win-x64" $dir
 ```
 
-Añadir Node al PATH de usuario (persistente):
+Add Node to the user PATH (persistent):
 
 ```powershell
 $dir = "$env:USERPROFILE\nodejs"
@@ -61,11 +61,11 @@ if ($userPath -notlike "*$dir*") {
 }
 ```
 
-> Nota: el instalador MSI oficial (`winget install OpenJS.NodeJS.LTS`) requiere elevación de administrador (UAC) y puede fallar con código 1603 en entornos corporativos. La instalación portable de arriba lo evita.
+> Note: the official MSI installer (`winget install OpenJS.NodeJS.LTS`) requires administrator elevation (UAC) and may fail with code 1603 in corporate environments. The portable installation above avoids this.
 
-### Verificar
+### Verify
 
-Abre una **terminal nueva** (para que tome el PATH actualizado) y comprueba:
+Open a **new terminal** (so it picks up the updated PATH) and check:
 
 ```powershell
 node --version   # -> v24.19.0
@@ -74,203 +74,203 @@ npm --version    # -> 11.17.0
 
 ---
 
-## 3. Cargar el PATH en cada terminal
+## 3. Load the PATH in each terminal
 
-El PATH de usuario solo aplica a terminales **nuevas**. Si `now-sdk` no se reconoce, carga el PATH manualmente al inicio de la sesión:
+The user PATH only applies to **new** terminals. If `now-sdk` is not recognized, load the PATH manually at the start of the session:
 
 ```powershell
 $env:Path = "$env:USERPROFILE\nodejs;$env:USERPROFILE\nodejs\node_modules\npm\bin;$env:Path"
 ```
 
-> Tip: guarda esta línea a mano; hay que ejecutarla una vez por cada terminal nueva (o añadirla a tu perfil de PowerShell).
+> Tip: keep this line handy; you need to run it once per new terminal (or add it to your PowerShell profile).
 
 ---
 
-## 4. Instalar el SDK de ServiceNow
+## 4. Install the ServiceNow SDK
 
-Instalación global (una sola vez; deja el comando `now-sdk` disponible y cacheado):
+Global installation (one time only; leaves the `now-sdk` command available and cached):
 
 ```powershell
 $env:Path = "$env:USERPROFILE\nodejs;$env:Path"
 npm install -g @servicenow/sdk@latest
 ```
 
-La instalación descarga ~500 paquetes y tarda un par de minutos. Verificar:
+The installation downloads ~500 packages and takes a couple of minutes. Verify:
 
 ```powershell
-now-sdk --version   # -> 4.11.2 (o superior)
+now-sdk --version   # -> 4.11.2 (or higher)
 now-sdk --help
 ```
 
-> Requisitos de versión: `explain` necesita >= 4.6.0; `query` necesita >= 4.8.0.
+> Version requirements: `explain` needs >= 4.6.0; `query` needs >= 4.8.0.
 
 ---
 
-## 5. Autenticación
+## 5. Authentication
 
-### Métodos disponibles
+### Available methods
 
-- **basic** — usuario + contraseña. Simple. Ideal para usuarios de servicio / integración.
-- **oauth** — flujo por navegador (code grant). Necesario para SSO, pero requiere que la instancia tenga un **OAuth API endpoint for external clients** registrado (Client ID/Secret/Redirect URL).
+- **basic** — username + password. Simple. Ideal for service / integration users.
+- **oauth** — browser flow (code grant). Required for SSO, but needs the instance to have an **OAuth API endpoint for external clients** registered (Client ID/Secret/Redirect URL).
 
-### Nota sobre SSO corporativo
+### Note on corporate SSO
 
-Si tu instancia usa **SSO puro**:
-- `basic` con tu usuario personal normalmente **falla** (tu contraseña vive en el proveedor de identidad, no en ServiceNow).
-- `oauth` es la vía correcta, pero si no hay OAuth client registrado, el navegador muestra **"Security constraints prevent access to requested page"**.
-- **Solución práctica:** usar un **usuario de integración/servicio** con login local en ServiceNow (contraseña propia, no SSO) y permisos de lectura API → autenticar con `basic`.
+If your instance uses **pure SSO**:
+- `basic` with your personal user usually **fails** (your password lives in the identity provider, not in ServiceNow).
+- `oauth` is the correct path, but if there is no registered OAuth client, the browser shows **"Security constraints prevent access to requested page"**.
+- **Practical solution:** use an **integration/service user** with a local login in ServiceNow (its own password, not SSO) and API read permissions → authenticate with `basic`.
 
-### Comando de login (basic)
+### Login command (basic)
 
 ```powershell
-now-sdk auth --add https://TU-INSTANCIA.service-now.com --type basic --alias TU-ALIAS
+now-sdk auth --add https://YOUR-INSTANCE.service-now.com --type basic --alias YOUR-ALIAS
 ```
 
-El comando pide alias, usuario y contraseña (la contraseña se introduce en el prompt, no queda en el historial). Las credenciales se guardan cifradas en `.now-sdk/` (gitignored).
+The command prompts for alias, username, and password (the password is entered at the prompt, not stored in the history). Credentials are stored encrypted in `.now-sdk/` (gitignored).
 
-### Ejemplos reales (Amrize)
+### Real examples (Amrize)
 
 ```powershell
-# QUAL (pruebas)
+# QUAL (testing)
 now-sdk auth --add https://oneservicequalna.service-now.com --type basic --alias oneservicequalna
 
-# PRD (producción) — usar un usuario de integración
+# PRD (production) — use an integration user
 now-sdk auth --add https://oneservicena.service-now.com --type basic --alias oneservicena-prd
 ```
 
-> **Convención de alias:** usar alias claros y distintos por entorno (`oneservicequalna`, `oneservicena-prd`) para no confundir QUAL con PRD.
+> **Alias convention:** use clear, distinct aliases per environment (`oneservicequalna`, `oneservicena-prd`) so you don't confuse QUAL with PRD.
 
-### Gestión de credenciales
+### Credential management
 
 ```powershell
-now-sdk auth --list                 # listar credenciales guardadas (* = default)
-now-sdk auth --use TU-ALIAS         # fijar cual es la default
-now-sdk auth --delete TU-ALIAS      # borrar unas credenciales
+now-sdk auth --list                 # list stored credentials (* = default)
+now-sdk auth --use YOUR-ALIAS       # set which one is the default
+now-sdk auth --delete YOUR-ALIAS    # delete a set of credentials
 ```
 
 ---
 
-## 6. Consultar datos (`now-sdk query`)
+## 6. Query data (`now-sdk query`)
 
-### Sintaxis base
+### Base syntax
 
 ```powershell
-now-sdk query <tabla> -q '<encoded_query>' -o json
+now-sdk query <table> -q '<encoded_query>' -o json
 ```
 
-### Flags útiles
+### Useful flags
 
-| Flag | Descripción |
+| Flag | Description |
 |------|-------------|
-| `-q, --query` | Filtro (encoded query). **Requerido.** Ej: `active=true^priority<=2` |
-| `-f, --fields` | Campos a devolver (coma-separados) |
-| `--limit` | Máx. registros por página (default 100) |
-| `--display-value all` | Devuelve valor crudo + etiqueta (útil para estados) |
-| `-a, --auth` | **Alias de credenciales a usar (elige el entorno).** Ej: `-a oneservicena-prd` |
-| `-o, --output` | `json` para salida estructurada |
-| `-s, --select` | Extraer un campo puntual (ej. `records[0].sys_id`) |
+| `-q, --query` | Filter (encoded query). **Required.** e.g. `active=true^priority<=2` |
+| `-f, --fields` | Fields to return (comma-separated) |
+| `--limit` | Max records per page (default 100) |
+| `--display-value all` | Returns raw value + label (useful for states) |
+| `-a, --auth` | **Credential alias to use (selects the environment).** e.g. `-a oneservicena-prd` |
+| `-o, --output` | `json` for structured output |
+| `-s, --select` | Extract a specific field (e.g. `records[0].sys_id`) |
 
-> **Buena práctica:** en PRD, incluye SIEMPRE `-a <alias-prd>` explícito para saber contra qué entorno consultas.
+> **Best practice:** in PRD, ALWAYS include an explicit `-a <prd-alias>` so you know which environment you are querying.
 
-### Tablas frecuentes
+### Common tables
 
-| Tabla | Contenido |
-|-------|-----------|
-| `incident` | Incidentes |
+| Table | Content |
+|-------|---------|
+| `incident` | Incidents |
 | `change_request` | Changes |
 | `sc_req_item` | RITM (Requested Items) |
 | `sc_request` | Requests (REQ) |
-| `problem` | Problemas (PRB) |
-| `sys_user` | Usuarios |
-| `sys_attachment` | Adjuntos de cualquier registro |
+| `problem` | Problems (PRB) |
+| `sys_user` | Users |
+| `sys_attachment` | Attachments of any record |
 
-### Ejemplos
+### Examples
 
 ```powershell
 $env:Path = "$env:USERPROFILE\nodejs;$env:Path"
 
-# Incidents activos de prioridad alta
+# High-priority active incidents
 now-sdk query incident -q 'active=true^priority<=2' -f 'number,short_description,state' -a oneservicena-prd -o json
 
-# Buscar un usuario por nombre (para obtener su sys_id)
+# Find a user by name (to get their sys_id)
 now-sdk query sys_user -q 'nameLIKEhernandez' -f 'sys_id,user_name,name,email' -a oneservicena-prd -o json
 
-# Incidentes de un usuario (por sys_id) en varios roles
+# A user's incidents (by sys_id) across several roles
 now-sdk query incident -q 'caller_id=<sys_id>^ORassigned_to=<sys_id>^ORopened_by=<sys_id>' -f 'number,short_description,state' -a oneservicena-prd --display-value all -o json
 
-# Incidentes abiertos de un grupo de asignacion
+# Open incidents of an assignment group
 now-sdk query incident -q 'assignment_group=<sys_id>^active=true' -f 'number,short_description,state,assigned_to' -a oneservicena-prd --display-value all -o json
 
-# Detalle completo de un ticket
+# Full detail of a ticket
 now-sdk query incident -q 'number=INC08340528' -f 'number,short_description,description,state,priority,caller_id,assigned_to,assignment_group,opened_at,comments,work_notes' -a oneservicena-prd --display-value all -o json
 
-# Adjuntos de un incident
-now-sdk query sys_attachment -q 'table_name=incident^table_sys_id=<sys_id_incident>' -f 'sys_id,file_name,content_type,size_bytes' -a oneservicena-prd --display-value all -o json
+# Attachments of an incident
+now-sdk query sys_attachment -q 'table_name=incident^table_sys_id=<incident_sys_id>' -f 'sys_id,file_name,content_type,size_bytes' -a oneservicena-prd --display-value all -o json
 ```
 
-### Operadores de encoded query (referencia rápida)
+### Encoded query operators (quick reference)
 
 - `^` = AND · `^OR` = OR
-- `=` igual · `!=` distinto · `LIKE` contiene · `STARTSWITH` · `IN`
-- `<=` `>=` para números/prioridades
-- `ORDERBY<campo>` / `ORDERBYDESC<campo>`
-- Valores dinámicos: `javascript:gs.getUserID()` (usuario actual), `javascript:gs.beginningOfToday()`
+- `=` equals · `!=` not equals · `LIKE` contains · `STARTSWITH` · `IN`
+- `<=` `>=` for numbers/priorities
+- `ORDERBY<field>` / `ORDERBYDESC<field>`
+- Dynamic values: `javascript:gs.getUserID()` (current user), `javascript:gs.beginningOfToday()`
 
-Documentación completa:
+Full documentation:
 ```powershell
 now-sdk explain encoded-query-guide --format=raw
 ```
 
 ---
 
-## 7. Documentación integrada (`now-sdk explain`)
+## 7. Built-in documentation (`now-sdk explain`)
 
 ```powershell
-now-sdk explain --list --format=raw                 # todos los topics
-now-sdk explain <topic> --list --peek --format=raw  # buscar y previsualizar
-now-sdk explain <topic> --peek --format=raw         # preview de un topic
-now-sdk explain <topic> --format=raw                # topic completo
+now-sdk explain --list --format=raw                 # all topics
+now-sdk explain <topic> --list --peek --format=raw  # search and preview
+now-sdk explain <topic> --peek --format=raw         # preview a topic
+now-sdk explain <topic> --format=raw                # full topic
 ```
 
-> Consejo: usa siempre `--peek` antes de abrir un topic completo para no gastar contexto.
+> Tip: always use `--peek` before opening a full topic to avoid burning context.
 
 ---
 
-## 8. Operaciones de escritura y adjuntos (REST API)
+## 8. Write operations and attachments (REST API)
 
-El SDK `now-sdk` NO crea/modifica registros ni descarga adjuntos. Para eso se usa la **REST API de ServiceNow** con la misma autenticación básica.
+The `now-sdk` SDK does NOT create/modify records or download attachments. For that, use the **ServiceNow REST API** with the same basic authentication.
 
-### Crear un registro (ej. change request)
+### Create a record (e.g. change request)
 
 ```
-POST https://TU-INSTANCIA.service-now.com/api/now/table/change_request
+POST https://YOUR-INSTANCE.service-now.com/api/now/table/change_request
 Body JSON: { "short_description": "...", "type": "Normal Minor", ... }
 ```
 
-### Modificar / avanzar estado
+### Modify / advance state
 
 ```
-PATCH https://TU-INSTANCIA.service-now.com/api/now/table/change_request/{sys_id}
-Body JSON: { "state": "<codigo>" }
+PATCH https://YOUR-INSTANCE.service-now.com/api/now/table/change_request/{sys_id}
+Body JSON: { "state": "<code>" }
 ```
 
-> Ojo: los modelos de estado pueden ser personalizados y estar gobernados por business rules / flujos de aprobación (CAB). Un salto directo de estado puede ser rechazado o dejar el registro inconsistente. Validar en QUAL primero.
+> Caution: state models can be customized and governed by business rules / approval flows (CAB). A direct state jump may be rejected or leave the record inconsistent. Validate in QUAL first.
 
-### Descargar el binario de un adjunto
+### Download an attachment's binary
 
 ```
-GET https://TU-INSTANCIA.service-now.com/api/now/attachment/{sys_id}/file
+GET https://YOUR-INSTANCE.service-now.com/api/now/attachment/{sys_id}/file
 ```
 
-### Script incluido: leer/extraer adjuntos
+### Included script: read/extract attachments
 
-Se incluye `tools/snow_read_attachment.py` que lista adjuntos, los descarga y extrae el texto de archivos `.docx` (solo con librería estándar, sin dependencias externas).
+`tools/snow_read_attachment.py` is included; it lists attachments, downloads them, and extracts the text from `.docx` files (using only the standard library, no external dependencies).
 
-Credenciales por variables de entorno (NUNCA en el código):
+Credentials via environment variables (NEVER in the code):
 
 ```powershell
 $env:SNOW_INSTANCE = "https://oneservicena.service-now.com"
-$env:SNOW_USER     = "tu_usuario_integracion"
+$env:SNOW_USER     = "your_integration_user"
 $env:SNOW_PASS     = "********"
 
 python tools\snow_read_attachment.py --number INC08340528 --list
@@ -279,54 +279,54 @@ python tools\snow_read_attachment.py --number INC08340528 --download-all
 python tools\snow_read_attachment.py --table change_request --number CHG0435576 --extract-docx
 ```
 
-> Las variables `$env:` definidas en una terminal solo viven en esa sesión. Para que otro proceso las vea, usar `[Environment]::SetEnvironmentVariable("SNOW_PASS","...","User")` y **borrarlas al terminar** con el mismo comando pasando `$null`.
+> The `$env:` variables defined in a terminal only live in that session. For another process to see them, use `[Environment]::SetEnvironmentVariable("SNOW_PASS","...","User")` and **delete them when finished** with the same command passing `$null`.
 
 ---
 
-## 8b. MCP Server "Service Now" (alternativa nativa en Kiro)
+## 8b. "Service Now" MCP Server (native alternative in Kiro)
 
-Además del CLI `now-sdk`, el workspace incluye un **MCP server propio** que expone ServiceNow como tools nativas dentro de Kiro. Ventajas frente al CLI: no depende de descargas de npx, evita los "cortes" de comando, y **soporta escritura** (crear/actualizar registros, avanzar estados, work notes) y **adjuntos** (listar y extraer texto de `.docx`) — cosas que el `now-sdk query` (solo lectura) no cubre.
+In addition to the `now-sdk` CLI, the workspace includes its own **MCP server** that exposes ServiceNow as native tools inside Kiro. Advantages over the CLI: it does not depend on npx downloads, it avoids command "cutoffs", and it **supports writes** (create/update records, advance states, work notes) and **attachments** (list and extract text from `.docx`) — things `now-sdk query` (read only) does not cover.
 
-### Archivos del servidor
+### Server files
 
-| Archivo | Rol |
-|---------|-----|
-| `servicenow_client.py` | Cliente REST (Table API + Attachment API), basic auth, lectura y escritura. |
-| `servicenow_server.py` | MCP server data-driven (stdio), define las tools. Config por variables de entorno. |
+| File | Role |
+|------|------|
+| `servicenow_client.py` | REST client (Table API + Attachment API), basic auth, read and write. |
+| `servicenow_server.py` | Data-driven MCP server (stdio), defines the tools. Configured via environment variables. |
 
-Requisitos: Python 3.10+ y los paquetes `mcp` y `requests` (ver `requirements.txt`).
+Requirements: Python 3.10+ and the `mcp` and `requests` packages (see `requirements.txt`).
 
-### Tools disponibles
+### Available tools
 
-**Lectura:**
-- `snow_ping` — verifica conexión.
-- `snow_query` — consulta cualquier tabla (encoded query, campos, paging, display value).
-- `snow_get_record` — un registro completo por número (INC/CHG/RITM/PRB).
-- `snow_find_user` — busca usuario por nombre/username/email → devuelve sys_id.
-- `snow_list_attachments` — lista adjuntos de un registro.
-- `snow_extract_docx` — descarga y extrae el texto de un `.docx` adjunto.
+**Read:**
+- `snow_ping` — verifies the connection.
+- `snow_query` — queries any table (encoded query, fields, paging, display value).
+- `snow_get_record` — a full record by number (INC/CHG/RITM/PRB).
+- `snow_find_user` — searches for a user by name/username/email → returns sys_id.
+- `snow_list_attachments` — lists a record's attachments.
+- `snow_extract_docx` — downloads and extracts the text of an attached `.docx`.
 
-**Escritura** (no disponible vía `now-sdk`):
-- `snow_create_record` — crea registros (ej. change_request).
-- `snow_update_record` — actualiza campos por número.
-- `snow_advance_state` — avanza el estado de un change (state code).
-- `snow_add_work_note` — añade work note / comentario.
+**Write** (not available via `now-sdk`):
+- `snow_create_record` — creates records (e.g. change_request).
+- `snow_update_record` — updates fields by number.
+- `snow_advance_state` — advances a change's state (state code).
+- `snow_add_work_note` — adds a work note / comment.
 
-### Configuración en `.kiro/settings/mcp.json`
+### Configuration in `.kiro/settings/mcp.json`
 
-El servidor lee la conexión de variables de entorno: `SNOW_INSTANCE`, `SNOW_USER`, `SNOW_PASSWORD`, `SNOW_ENV`. Se registran **dos entradas** (una por entorno) para poder apuntar a PRD o QUAL de forma aislada.
+The server reads the connection from environment variables: `SNOW_INSTANCE`, `SNOW_USER`, `SNOW_PASSWORD`, `SNOW_ENV`. **Two entries** are registered (one per environment) so you can point to PRD or QUAL in isolation.
 
-**Entrada PRD:**
+**PRD entry:**
 
 ```json
 "Service Now": {
-  "command": "C:\\Users\\<usuario>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-  "args": ["C:\\Users\\<usuario>\\ANDRES-WORKSPACE\\servicenow_server.py"],
-  "cwd": "C:\\Users\\<usuario>\\ANDRES-WORKSPACE",
+  "command": "C:\\Users\\<user>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+  "args": ["C:\\Users\\<user>\\ANDRES-WORKSPACE\\servicenow_server.py"],
+  "cwd": "C:\\Users\\<user>\\ANDRES-WORKSPACE",
   "env": {
     "SNOW_INSTANCE": "https://oneservicena.service-now.com",
     "SNOW_USER": "kiro_integration",
-    "SNOW_PASSWORD": "PON_AQUI_LA_CLAVE",
+    "SNOW_PASSWORD": "PUT_THE_PASSWORD_HERE",
     "SNOW_ENV": "PRD"
   },
   "disabled": false,
@@ -337,17 +337,17 @@ El servidor lee la conexión de variables de entorno: `SNOW_INSTANCE`, `SNOW_USE
 }
 ```
 
-**Entrada QUAL:**
+**QUAL entry:**
 
 ```json
 "Service Now QUAL": {
-  "command": "C:\\Users\\<usuario>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-  "args": ["C:\\Users\\<usuario>\\ANDRES-WORKSPACE\\servicenow_server.py"],
-  "cwd": "C:\\Users\\<usuario>\\ANDRES-WORKSPACE",
+  "command": "C:\\Users\\<user>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+  "args": ["C:\\Users\\<user>\\ANDRES-WORKSPACE\\servicenow_server.py"],
+  "cwd": "C:\\Users\\<user>\\ANDRES-WORKSPACE",
   "env": {
     "SNOW_INSTANCE": "https://oneservicequalna.service-now.com",
     "SNOW_USER": "test_kiro",
-    "SNOW_PASSWORD": "PON_AQUI_LA_CLAVE",
+    "SNOW_PASSWORD": "PUT_THE_PASSWORD_HERE",
     "SNOW_ENV": "QUAL"
   },
   "disabled": false,
@@ -359,59 +359,59 @@ El servidor lee la conexión de variables de entorno: `SNOW_INSTANCE`, `SNOW_USE
 }
 ```
 
-### Notas de seguridad y convención
+### Security and convention notes
 
-- **`autoApprove` por entorno, a propósito:**
-  - **PRD** → solo tools de **lectura** en auto-aprobación. Las de escritura piden confirmación manual (evita modificar producción por accidente).
-  - **QUAL** → incluye también las tools de **escritura**, porque es el entorno de pruebas donde sí queremos crear/avanzar changes.
-- **`SNOW_PASSWORD` queda en texto plano** en `mcp.json` (igual que las credenciales SAP). Ese archivo **no debe subirse a git**.
-- El label `SNOW_ENV` aparece en los mensajes de las tools, así siempre se sabe contra qué entorno se opera.
-- **El archivo `.kiro/settings/mcp.json` está protegido**: Kiro no puede editarlo automáticamente; hay que actualizarlo a mano.
-- Tras guardar el `mcp.json`, reconectar los servers desde la vista MCP de Kiro (o reiniciar).
+- **`autoApprove` per environment, on purpose:**
+  - **PRD** → only **read** tools auto-approved. Write tools require manual confirmation (avoids modifying production by accident).
+  - **QUAL** → also includes the **write** tools, since it is the test environment where we do want to create/advance changes.
+- **`SNOW_PASSWORD` is stored in plain text** in `mcp.json` (same as the SAP credentials). That file **must not be committed to git**.
+- The `SNOW_ENV` label appears in the tools' messages, so you always know which environment you are operating against.
+- **The `.kiro/settings/mcp.json` file is protected**: Kiro cannot edit it automatically; you must update it by hand.
+- After saving `mcp.json`, reconnect the servers from Kiro's MCP view (or restart).
 
-### Uso rápido (una vez conectado)
+### Quick usage (once connected)
 
-- Probar conexión: tool `snow_ping`.
-- Consultar: `snow_query` con `table=incident`, `query=active=true^priority<=2`.
-- Crear un change de prueba (solo QUAL): `snow_create_record` con `table=change_request` y un objeto `fields`.
-- Avanzar estado (solo QUAL): `snow_advance_state` con `number=CHG...` y `state=<código>` (ver modelo de estados en la sección 6 / datos reales).
+- Test the connection: `snow_ping` tool.
+- Query: `snow_query` with `table=incident`, `query=active=true^priority<=2`.
+- Create a test change (QUAL only): `snow_create_record` with `table=change_request` and a `fields` object.
+- Advance a state (QUAL only): `snow_advance_state` with `number=CHG...` and `state=<code>` (see the state model in section 6 / real data).
 
 ---
 
-## 9. Solución de problemas (troubleshooting)
+## 9. Troubleshooting
 
-| Síntoma | Causa / Solución |
+| Symptom | Cause / Solution |
 |---------|------------------|
-| `npx`/`node`/`now-sdk` no se reconoce | El PATH no está cargado en esta terminal. Ejecuta la línea de la sección 3, o abre una terminal nueva. |
-| MSI de Node falla con código 1603 | Requiere admin (UAC). Usa la instalación portable de la sección 2. |
-| `auth --list` dice "No credentials found" | El login no se guardó. En OAuth suele ser por falta de OAuth client (ver "Security constraints"). Usar basic con usuario de servicio. |
-| Navegador muestra "Security constraints prevent access" | OAuth sin client registrado en la instancia. Usar basic, o pedir registro de OAuth endpoint. |
-| Login basic falla con usuario SSO | Tu usuario es solo-SSO. Necesitas un usuario de integración con login local. |
-| Una query devuelve `records: []` inesperadamente | Probable falta de ACL de lectura del usuario sobre esa tabla (ej. `sc_req_item`, `sys_dictionary`, `sys_choice`). Pedir el permiso o usar otro usuario. |
-| Un comando "se corta" sin salida | Comando aún ejecutándose (primera descarga de npx, etc.). Reintentar; una vez cacheado responde rápido. |
+| `npx`/`node`/`now-sdk` not recognized | The PATH is not loaded in this terminal. Run the line from section 3, or open a new terminal. |
+| Node MSI fails with code 1603 | Requires admin (UAC). Use the portable installation from section 2. |
+| `auth --list` says "No credentials found" | The login was not saved. In OAuth this is usually due to a missing OAuth client (see "Security constraints"). Use basic with a service user. |
+| Browser shows "Security constraints prevent access" | OAuth without a client registered in the instance. Use basic, or request registration of an OAuth endpoint. |
+| Basic login fails with an SSO user | Your user is SSO-only. You need an integration user with a local login. |
+| A query unexpectedly returns `records: []` | Likely the user is missing a read ACL on that table (e.g. `sc_req_item`, `sys_dictionary`, `sys_choice`). Request the permission or use another user. |
+| A command "hangs" with no output | The command is still running (first npx download, etc.). Retry; once cached it responds quickly. |
 
 ---
 
-## 10. Checklist rápido para un usuario nuevo
+## 10. Quick checklist for a new user
 
-1. [ ] Instalar Node.js (portable, sección 2) y verificar `node --version`.
-2. [ ] Cargar el PATH en la terminal (sección 3).
-3. [ ] `npm install -g @servicenow/sdk@latest` y verificar `now-sdk --version`.
-4. [ ] Conseguir credenciales:
-   - QUAL: usuario de pruebas.
-   - PRD: **usuario de integración** con login local + permisos de lectura API.
-5. [ ] `now-sdk auth --add <url> --type basic --alias <alias>` para cada entorno.
-6. [ ] `now-sdk auth --list` para confirmar.
-7. [ ] Probar: `now-sdk query incident -q 'active=true' --limit 3 -f 'number,short_description,state' -a <alias> -o json`.
-8. [ ] (Opcional) Para adjuntos/escritura: usar la REST API / el script `tools/snow_read_attachment.py`.
-9. [ ] (Alternativa nativa) Configurar el **MCP server "Service Now"** en `mcp.json` (sección 8b) — da tools de lectura, escritura y adjuntos dentro de Kiro sin usar el CLI.
+1. [ ] Install Node.js (portable, section 2) and verify `node --version`.
+2. [ ] Load the PATH in the terminal (section 3).
+3. [ ] `npm install -g @servicenow/sdk@latest` and verify `now-sdk --version`.
+4. [ ] Get credentials:
+   - QUAL: test user.
+   - PRD: **integration user** with local login + API read permissions.
+5. [ ] `now-sdk auth --add <url> --type basic --alias <alias>` for each environment.
+6. [ ] `now-sdk auth --list` to confirm.
+7. [ ] Test: `now-sdk query incident -q 'active=true' --limit 3 -f 'number,short_description,state' -a <alias> -o json`.
+8. [ ] (Optional) For attachments/writes: use the REST API / the `tools/snow_read_attachment.py` script.
+9. [ ] (Native alternative) Configure the **"Service Now" MCP server** in `mcp.json` (section 8b) — it provides read, write, and attachment tools inside Kiro without using the CLI.
 
 ---
 
-## Referencias
+## References
 
-- Entornos Amrize:
-  - QUAL: `https://oneservicequalna.service-now.com` (alias sugerido: `oneservicequalna`)
-  - PRD: `https://oneservicena.service-now.com` (alias sugerido: `oneservicena-prd`)
-- Documentación oficial del SDK: `now-sdk explain <topic> --format=raw`
-- Landing oficial: https://docs.servicenow.com/csh?topicname=servicenow-sdk-landing.html
+- Amrize environments:
+  - QUAL: `https://oneservicequalna.service-now.com` (suggested alias: `oneservicequalna`)
+  - PRD: `https://oneservicena.service-now.com` (suggested alias: `oneservicena-prd`)
+- Official SDK documentation: `now-sdk explain <topic> --format=raw`
+- Official landing page: https://docs.servicenow.com/csh?topicname=servicenow-sdk-landing.html

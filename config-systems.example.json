@@ -23,6 +23,23 @@
       "allow_tmp": true
     }
   },
+  "servicenow": {
+    "_comment": "Non-secret ServiceNow environment metadata only. Username and password are NOT stored here; they live in the env block of .kiro/settings/mcp.json (SNOW_USER / SNOW_PASSWORD), same as SAP credentials.",
+    "PRD": {
+      "name": "PRD - ServiceNow Production",
+      "instance": "https://oneservicena.service-now.com",
+      "env": "PRD",
+      "description": "Production instance (read-only tools auto-approved)",
+      "allow_write": false
+    },
+    "QUAL": {
+      "name": "QUAL - ServiceNow Quality/Test",
+      "instance": "https://oneservicequalna.service-now.com",
+      "env": "QUAL",
+      "description": "Test instance (read and write tools auto-approved)",
+      "allow_write": true
+    }
+  },
   "metadata": {
     "version": "1.0.0",
     "maintained_by": "[Your team name]"

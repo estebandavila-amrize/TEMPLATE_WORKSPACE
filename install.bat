@@ -30,7 +30,7 @@ echo.
 :: 1. CHECK PREREQUISITES
 :: ============================================================
 
-echo [1/5] Checking prerequisites...
+echo [1/6] Checking prerequisites...
 
 where python >nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -52,6 +52,24 @@ if %ERRORLEVEL% neq 0 (
     set GIT_AVAILABLE=1
 )
 
+:: Portable Node.js lives under LocalAppData (no admin / UAC required)
+set NODE_HOME=%LOCALAPPDATA%\Programs\nodejs
+
+where node >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    for /f "delims=" %%v in ('node --version 2^>^&1') do set NODEVER=%%v
+    echo   Node.js: !NODEVER!
+    set NODE_AVAILABLE=1
+) else if exist "!NODE_HOME!\node.exe" (
+    set "PATH=!NODE_HOME!;!PATH!"
+    for /f "delims=" %%v in ('node --version 2^>^&1') do set NODEVER=%%v
+    echo   Node.js: !NODEVER! (portable, %LOCALAPPDATA%\Programs\nodejs)
+    set NODE_AVAILABLE=1
+) else (
+    echo   Node.js: Not found (can be installed portably in step 6 if you enable ServiceNow)
+    set NODE_AVAILABLE=0
+)
+
 echo   OK
 echo.
 
@@ -59,7 +77,7 @@ echo.
 :: 2. COLLECT WORKSPACE NAME + SAP CREDENTIALS
 :: ============================================================
 
-echo [2/5] Workspace target
+echo [2/6] Workspace target
 echo.
 
 set /p WORKSPACE_NAME="  Workspace folder name [sap-mcp-workspace]: "
@@ -70,7 +88,7 @@ echo.
 echo   Target: !WORKSPACE!
 echo.
 
-echo [2/5] Primary SAP system
+echo [2/6] Primary SAP system
 echo.
 
 set /p SYS1_ID="  System ID (e.g. DEV, QAS): "
@@ -145,13 +163,34 @@ for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; $
 :SKIP_SYS2
 
 echo.
+echo   ServiceNow (optional)
+echo   Adds a "Service Now" MCP server entry so Kiro can query/update
+echo   ServiceNow records. Requires the ServiceNow SDK / Node.js (step 6).
+set /p INSTALL_SNOW="  Configure a ServiceNow connection? (Y/N) [N]: "
+if /i not "!INSTALL_SNOW!"=="Y" goto :SKIP_SNOW_CFG
+
+set /p SNOW_INSTANCE="    ServiceNow instance URL (e.g. https://oneservicequalna.service-now.com): "
+if "!SNOW_INSTANCE!"=="" (
+    echo     WARNING: No instance URL given. Skipping ServiceNow configuration.
+    set INSTALL_SNOW=N
+    goto :SKIP_SNOW_CFG
+)
+set /p SNOW_USER="    ServiceNow username (integration/service user recommended): "
+set /p SNOW_ENV="    Environment label (PRD / QUAL) [QUAL]: "
+if "!SNOW_ENV!"=="" set "SNOW_ENV=QUAL"
+echo     Enter ServiceNow password (input hidden):
+for /f "delims=" %%p in ('powershell -Command "$p = Read-Host -AsSecureString; $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p)); $plain -replace '%%','%%%%'"') do set "SNOW_PASS=%%p"
+
+:SKIP_SNOW_CFG
+
+echo.
 echo   DEBUG: Passed second-system question, proceeding to step 3...
 
 :: ============================================================
 :: 3. COPY TEMPLATE INTO WORKSPACE
 :: ============================================================
 
-echo [3/5] Setting up workspace at !WORKSPACE!...
+echo [3/6] Setting up workspace at !WORKSPACE!...
 echo   DEBUG: TEMPLATE_DIR=!TEMPLATE_DIR!
 echo   DEBUG: WORKSPACE=!WORKSPACE!
 echo   DEBUG: REPO_URL=!REPO_URL!
@@ -195,7 +234,7 @@ echo.
 :: 4. GENERATE CREDENTIAL FILES (gitignored)
 :: ============================================================
 
-echo [4/5] Generating credential files...
+echo [4/6] Generating credential files...
 
 :: --- .kiro/settings/mcp.json (workspace-level MCP config) ---
 set MCP_DIR=!WORKSPACE!\.kiro\settings
@@ -264,6 +303,38 @@ echo     }
     ) >> "!MCP_FILE!"
 )
 
+:: --- ServiceNow MCP server entry (optional) ---
+if /i "!INSTALL_SNOW!"=="Y" (
+    (
+echo     ,
+echo     "Service Now": {
+echo       "command": "python",
+echo       "args": ["servicenow_server.py"],
+echo       "env": {
+echo         "SNOW_INSTANCE": "!SNOW_INSTANCE!",
+echo         "SNOW_USER": "!SNOW_USER!",
+echo         "SNOW_PASSWORD": "!SNOW_PASS!",
+echo         "SNOW_ENV": "!SNOW_ENV!"
+echo       },
+echo       "timeout": 60000,
+echo       "disabled": false,
+echo       "autoApprove": [
+echo         "snow_ping", "snow_query", "snow_get_record",
+echo         "snow_find_user", "snow_list_attachments", "snow_extract_docx"
+    ) >> "!MCP_FILE!"
+    :: Write tools auto-approved only for non-PRD (test) environments
+    if /i not "!SNOW_ENV!"=="PRD" (
+        (
+echo         ,
+echo         "snow_create_record", "snow_update_record", "snow_advance_state", "snow_add_work_note"
+        ) >> "!MCP_FILE!"
+    )
+    (
+echo       ]
+echo     }
+    ) >> "!MCP_FILE!"
+)
+
 (
 echo   }
 echo }
@@ -302,8 +373,34 @@ echo     }
     ) >> "!WORKSPACE!\config-systems.json"
 )
 
+:: Close the "systems" object
 (
 echo   }
+) >> "!WORKSPACE!\config-systems.json"
+
+:: ServiceNow metadata block (no secrets; credentials live in mcp.json)
+if /i "!INSTALL_SNOW!"=="Y" (
+    if /i "!SNOW_ENV!"=="PRD" (
+        set "SNOW_ALLOW_WRITE=false"
+    ) else (
+        set "SNOW_ALLOW_WRITE=true"
+    )
+    (
+echo   ,"servicenow": {
+echo     "_comment": "Non-secret ServiceNow environment metadata only. SNOW_USER/SNOW_PASSWORD live in .kiro/settings/mcp.json.",
+echo     "!SNOW_ENV!": {
+echo       "name": "!SNOW_ENV! - ServiceNow",
+echo       "instance": "!SNOW_INSTANCE!",
+echo       "env": "!SNOW_ENV!",
+echo       "description": "ServiceNow !SNOW_ENV! instance",
+echo       "allow_write": !SNOW_ALLOW_WRITE!
+echo     }
+echo   }
+    ) >> "!WORKSPACE!\config-systems.json"
+)
+
+:: Close the root object
+(
 echo }
 ) >> "!WORKSPACE!\config-systems.json"
 
@@ -313,7 +410,7 @@ echo   OK
 :: 5. INSTALL PYTHON DEPENDENCIES
 :: ============================================================
 
-echo [5/5] Installing Python dependencies...
+echo [5/6] Installing Python dependencies...
 
 pip install -q mcp requests 2>nul
 if %ERRORLEVEL% neq 0 (
@@ -321,6 +418,65 @@ if %ERRORLEVEL% neq 0 (
 ) else (
     echo   OK
 )
+
+:: ============================================================
+:: 6. INSTALL SERVICENOW SDK (optional, requires Node.js)
+:: ============================================================
+
+echo.
+echo [6/6] ServiceNow SDK (optional)
+echo.
+echo   The ServiceNow SDK (now-sdk) lets you query live ServiceNow
+echo   data (incidents, changes, RITM...) from the command line.
+echo   See docs\SERVICENOW_SDK_SETUP.md.
+echo.
+
+set SNOW_INSTALLED=0
+
+:: Only install the SDK when a ServiceNow connection was configured
+if /i not "!INSTALL_SNOW!"=="Y" (
+    echo   No ServiceNow connection configured. Skipping SDK install.
+    goto :SKIP_SNOW
+)
+
+set /p INSTALL_SNOW_SDK="  Install the ServiceNow SDK (now-sdk) now? (Y/N) [Y]: "
+if "!INSTALL_SNOW_SDK!"=="" set INSTALL_SNOW_SDK=Y
+if /i not "!INSTALL_SNOW_SDK!"=="Y" goto :SKIP_SNOW
+
+:: --- Ensure Node.js is available (portable install under LocalAppData, no admin) ---
+if "!NODE_AVAILABLE!"=="1" goto :SNOW_NPM
+
+echo   Node.js not found. Installing portable Node.js under %LOCALAPPDATA%\Programs\nodejs ...
+echo   (No administrator rights required.)
+set "NODE_VER=v24.19.0"
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { $ver='%NODE_VER%'; $dst='%LOCALAPPDATA%\Programs\nodejs'; $zip=Join-Path $env:TEMP ('node-'+$ver+'-win-x64.zip'); $url='https://nodejs.org/dist/'+$ver+'/node-'+$ver+'-win-x64.zip'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; $parent=Split-Path $dst -Parent; if(!(Test-Path $parent)){New-Item -ItemType Directory -Force -Path $parent ^| Out-Null}; if(Test-Path $dst){Remove-Item -Recurse -Force $dst}; Expand-Archive -Path $zip -DestinationPath $parent -Force; Rename-Item (Join-Path $parent ('node-'+$ver+'-win-x64')) $dst; Remove-Item $zip -Force; exit 0 } catch { Write-Error $_; exit 1 }"
+if !ERRORLEVEL! neq 0 (
+    echo   WARNING: Portable Node.js install failed.
+    echo   Install Node.js manually ^(see docs\SERVICENOW_SDK_SETUP.md section 2^),
+    echo   then run:  npm install -g @servicenow/sdk@latest
+    goto :SKIP_SNOW
+)
+
+:: Add portable Node to PATH for this session and persist to the user PATH
+set "PATH=!NODE_HOME!;!PATH!"
+set NODE_AVAILABLE=1
+powershell -NoProfile -Command "$dir='%LOCALAPPDATA%\Programs\nodejs'; $u=[Environment]::GetEnvironmentVariable('Path','User'); if($u -notlike ('*'+$dir+'*')){[Environment]::SetEnvironmentVariable('Path', ($u.TrimEnd(';')+';'+$dir), 'User')}"
+for /f "delims=" %%v in ('node --version 2^>^&1') do set NODEVER=%%v
+echo   Node.js: !NODEVER! (portable, %LOCALAPPDATA%\Programs\nodejs)
+
+:SNOW_NPM
+echo   Installing @servicenow/sdk globally (this may take a couple of minutes)...
+call npm install -g @servicenow/sdk@latest
+if !ERRORLEVEL! neq 0 (
+    echo   WARNING: npm install failed. Run manually: npm install -g @servicenow/sdk@latest
+) else (
+    for /f "delims=" %%v in ('now-sdk --version 2^>^&1') do set SNOWVER=%%v
+    echo   ServiceNow SDK installed: !SNOWVER!
+    set SNOW_INSTALLED=1
+)
+
+:SKIP_SNOW
+echo.
 
 :: ============================================================
 :: DONE
@@ -347,6 +503,21 @@ echo   What was generated (credentials, gitignored):
 echo     - .kiro/settings/mcp.json
 echo     - config-systems.json
 echo.
+if /i "!INSTALL_SNOW!"=="Y" (
+    echo   ServiceNow: "Service Now" MCP entry added to mcp.json ^(env: !SNOW_ENV!^)
+    echo     Requires servicenow_server.py / servicenow_client.py in the workspace.
+    if "!SNOW_INSTALLED!"=="1" (
+        echo     ServiceNow SDK installed: !SNOWVER! ^(now-sdk^)
+    ) else (
+        echo     ServiceNow SDK not installed. To install later: npm install -g @servicenow/sdk@latest
+    )
+    echo     See docs\SERVICENOW_SDK_SETUP.md for details.
+    echo.
+) else (
+    echo   ServiceNow: not configured ^(optional^)
+    echo     Re-run the installer or see docs\SERVICENOW_SDK_SETUP.md to add it later.
+    echo.
+)
 echo   Next steps:
 echo     1. Open Kiro
 echo     2. File ^> Open Folder ^> !WORKSPACE!
