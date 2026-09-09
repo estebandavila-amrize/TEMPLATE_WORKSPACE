@@ -21,6 +21,15 @@ from urllib.parse import quote
 import requests
 from requests.auth import HTTPBasicAuth
 
+# Use the operating system's trust store (Windows cert store) so corporate
+# TLS-inspection CAs are trusted without disabling certificate verification.
+# Falls back silently if truststore is not installed (keeps default behavior).
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except Exception:
+    pass
+
 
 # Maps a ServiceNow record number prefix to its table.
 _NUMBER_PREFIX_TABLE = {

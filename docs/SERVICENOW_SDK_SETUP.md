@@ -294,7 +294,9 @@ In addition to the `now-sdk` CLI, the workspace includes its own **MCP server** 
 | `servicenow_client.py` | REST client (Table API + Attachment API), basic auth, read and write. |
 | `servicenow_server.py` | Data-driven MCP server (stdio), defines the tools. Configured via environment variables. |
 
-Requirements: Python 3.10+ and the `mcp` and `requests` packages (see `requirements.txt`).
+Requirements: Python 3.10+ and the `mcp`, `requests`, and `truststore` packages (see `requirements.txt`). Install everything with `pip install -r requirements.txt`.
+
+> **Corporate proxy / TLS inspection (important):** Amrize's network performs TLS inspection, which injects a self-signed root CA into the certificate chain. Python's `requests` does not trust it by default, so ServiceNow calls fail with `SSL: CERTIFICATE_VERIFY_FAILED - self-signed certificate in certificate chain`. `servicenow_client.py` solves this by calling `truststore.inject_into_ssl()` at import time, which makes Python use the **operating system's** trust store (where the corporate CA is already trusted). This keeps certificate verification **on** — it does NOT disable TLS security. Just make sure `truststore` is installed (it is in `requirements.txt`).
 
 ### Available tools
 
@@ -389,6 +391,9 @@ The server reads the connection from environment variables: `SNOW_INSTANCE`, `SN
 | Basic login fails with an SSO user | Your user is SSO-only. You need an integration user with a local login. |
 | A query unexpectedly returns `records: []` | Likely the user is missing a read ACL on that table (e.g. `sc_req_item`, `sys_dictionary`, `sys_choice`). Request the permission or use another user. |
 | A command "hangs" with no output | The command is still running (first npx download, etc.). Retry; once cached it responds quickly. |
+| MCP `snow_ping` fails with `SSL: CERTIFICATE_VERIFY_FAILED - self-signed certificate in certificate chain` | Corporate TLS inspection injects a self-signed root CA that Python does not trust by default. Fix: install `truststore` (`pip install -r requirements.txt`); `servicenow_client.py` calls `truststore.inject_into_ssl()` to use the OS trust store. Keeps verification ON. After installing, fully restart the MCP server (reconnect is not enough — reload the Kiro window). |
+| MCP config edited but `snow_ping` still shows the old error | Kiro reused a stale server process. A "reconnect" may not relaunch it. Use Command Palette → "Developer: Reload Window", or toggle `"disabled": true`→`false` in `mcp.json`, to force a fresh process. |
+| ServiceNow servers do not appear in Kiro's MCP list | The two entries were pasted outside the `"mcpServers"` object (as siblings of it). They must be nested INSIDE `"mcpServers"`, alongside the other servers. |
 
 ---
 
@@ -404,7 +409,11 @@ The server reads the connection from environment variables: `SNOW_INSTANCE`, `SN
 6. [ ] `now-sdk auth --list` to confirm.
 7. [ ] Test: `now-sdk query incident -q 'active=true' --limit 3 -f 'number,short_description,state' -a <alias> -o json`.
 8. [ ] (Optional) For attachments/writes: use the REST API / the `tools/snow_read_attachment.py` script.
-9. [ ] (Native alternative) Configure the **"Service Now" MCP server** in `mcp.json` (section 8b) — it provides read, write, and attachment tools inside Kiro without using the CLI.
+9. [ ] (Native alternative — recommended) Configure the **"Service Now" MCP server** in `mcp.json` (section 8b) — it provides read, write, and attachment tools inside Kiro without using the CLI:
+   - [ ] `pip install -r requirements.txt` (installs `mcp`, `requests`, and `truststore` — the last one is required behind the corporate proxy).
+   - [ ] Add the two ServiceNow entries **inside** the `"mcpServers"` object of `.kiro/settings/mcp.json` (do not overwrite existing SAP servers).
+   - [ ] Set the correct `python.exe` path and workspace path.
+   - [ ] Fully restart Kiro (Reload Window) so the servers start fresh, then run `snow_ping`.
 
 ---
 
