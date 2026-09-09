@@ -1,12 +1,12 @@
 ---
 name: amrize-knowledge
 description: |
-  Amrize BP knowledge base for SAP ECC development decisions.
-  Use when planning, designing, implementing, or reviewing ABAP developments,
-  change requests (CHG), WRICEF objects, Mulesoft/Salesforce integrations,
-  enhancement spots, FM facades, OO architecture, or deploy workflows.
-  Provides naming conventions, coding standards, SOLID patterns, S/4HANA readiness
-  rules, deploy workflow, and system table references — all validated in production.
+Amrize BP knowledge base for SAP ECC development decisions.
+Use when planning, designing, implementing, or reviewing ABAP developments,
+change requests (CHG), WRICEF objects, Mulesoft/Salesforce integrations,
+enhancement spots, FM facades, OO architecture, or deploy workflows.
+Provides naming conventions, coding standards, SOLID patterns, S/4HANA readiness
+rules, deploy workflow, and system table references — all validated in production.
 license: GPL-3.0
 metadata:
   version: 1.0.0
@@ -26,6 +26,7 @@ Use this reference BEFORE writing any ABAP code for Amrize. It contains:
 - S/4HANA readiness (tables to avoid, syntax to use)
 - System tables (verified field lists for CTS, workbench, FMs)
 - Integration patterns (Mulesoft RFC, SPROXY, IDocs)
+- Fiori/UI5 apps on classic CRM/ECC (JSON-over-ICF) → see `references/fiori-ui5-icf.md`
 
 ---
 
@@ -118,6 +119,7 @@ ENDCLASS.
 - `ZFI_` — Finance
 - `ZPP_` — Production Planning
 - `ZWM_` — Warehouse Management
+- `ZCRM_` — Customer Relationship Management
 
 ### Variable Prefixes
 | Scope | Object | Value | Table | Structure |
@@ -131,6 +133,7 @@ ENDCLASS.
 ### Development Packages
 - `ZSD_SF` — SD integrations with Salesforce/Mulesoft
 - `ZDEV_SD` — general SD developments
+- `ZCRM` — general developments in SAP CRM (BZA)
 - `$TMP` — POCs only (never production)
 
 ---
@@ -426,3 +429,26 @@ Tests: ZCL_SD_PLANT_DETERMINATOR_TEST + LCL_DAO_DOUBLE + LCL_ENH_DOUBLE
 ```
 
 Key difference vs FM facade: include must **read globals at start** and **write results back at end**. Orchestrator never touches program globals.
+
+---
+
+## 11. Fiori / SAPUI5 apps (classic CRM/ECC, non-HANA)
+
+For building custom UI5 apps on this landscape (no Gateway/SEGW/RAP), use the
+**JSON-over-ICF** pattern: a UI5 app in a BSP repository talking to an ICF handler
+class (`IF_HTTP_EXTENSION`) that returns/consumes JSON via `/ui2/cl_json`.
+
+Full validated reference (handler skeleton, One Order status change recipe, TJ30
+transition rules, parametric config, SplitApp master-detail, deploy, failure cheat
+sheet): **`references/fiori-ui5-icf.md`**.
+
+Hard-won essentials:
+- Do NOT use SEGW/OData (`GEN_DUPLICATE_ENTRY`, Note 2289003) or RAP (not available).
+- Change CRM user status via `ZCL_CA_CRM_TOOLS=>SET_USER_STATUS` + `CRM_ORDER_SAVE`
+  with **`iv_update_task_local = abap_true`** + `COMMIT WORK AND WAIT`.
+- `crmt_input_field-field_names` is SORTED → `INSERT ... INTO TABLE`, never `APPEND`.
+- `CRM_ORDER_SAVE`'s `et_saved_objects` is `CRMT_RETURN_OBJECTS`; judge success by
+  exceptions, not by that table being filled.
+- Respect status transition rules (`TJ30`: `STONR`/`NSONR`/`HSONR`) — forbidden
+  transitions are ignored silently. List orders from the real pending status.
+- Drive config from table content, not hardcoded keys.
