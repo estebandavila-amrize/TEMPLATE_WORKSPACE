@@ -13,3 +13,9 @@ mcp>=1.0.0
 
 # HTTP client para llamadas a SAP ADT REST API
 requests>=2.31.0
+
+# Uses the OS trust store (Windows/macOS/Linux) for TLS verification so that
+# corporate TLS-inspection / self-signed root CAs are trusted WITHOUT disabling
+# certificate verification. Required for ServiceNow (and any HTTPS endpoint)
+# behind a corporate proxy. servicenow_client.py calls truststore.inject_into_ssl().
+truststore>=0.9.0
