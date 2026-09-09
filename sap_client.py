@@ -906,9 +906,13 @@ class SAPADTClient:
             if resp.status_code not in (200, 201):
                 return {"ok": False, "step": "create", "status": resp.status_code, "message": resp.text[:500]}
 
-            # Write via includes (definition + implementation)
+            # Write the full source to the class MAIN source (/source/main).
+            # The global CLASS ... DEFINITION / IMPLEMENTATION blocks belong in the
+            # main source, NOT in the local "definitions"/"implementations" includes
+            # (CCDEF/CCIMP). Writing them to those includes leaves the main source as
+            # an empty skeleton and breaks activation.
             object_url = f"/sap/bc/adt/oo/classes/{class_name.lower()}"
-            definition, implementation = self._split_class_source(source_code)
+            source_url = f"{object_url}/source/main"
 
             csrf_token2 = self._fetch_csrf_token()
             lock_result = self._lock_object(object_url, csrf_token2)
@@ -916,18 +920,22 @@ class SAPADTClient:
                 return {"ok": False, "step": "lock", "detail": lock_result}
             lock_handle = lock_result["lock_handle"]
 
-            def_result = self._write_class_include(object_url, "definitions", definition, lock_handle, csrf_token2, transport)
-            if not def_result.get("ok"):
-                self._unlock_object(object_url, lock_handle, csrf_token2)
-                return {"ok": False, "step": "write_definitions", "detail": def_result}
+            params = {"lockHandle": lock_handle}
+            if transport:
+                params["corrNr"] = transport
 
-            if implementation:
-                impl_result = self._write_class_include(object_url, "implementations", implementation, lock_handle, csrf_token2, transport)
-                if not impl_result.get("ok"):
-                    self._unlock_object(object_url, lock_handle, csrf_token2)
-                    return {"ok": False, "step": "write_implementations", "detail": impl_result}
-
+            write_resp = self.session.put(
+                self._url(source_url),
+                data=source_code.encode("utf-8"),
+                headers={"X-CSRF-Token": csrf_token2, "Content-Type": "text/plain; charset=utf-8"},
+                params=params,
+                timeout=30,
+            )
             self._unlock_object(object_url, lock_handle, csrf_token2)
+
+            if write_resp.status_code not in (200, 204):
+                return {"ok": False, "step": "write_source", "status": write_resp.status_code,
+                        "message": write_resp.text[:500]}
 
             activate_result = self.activate_object(class_name, "CLAS/OC")
             return {"ok": activate_result.get("ok", False), "class": class_name,
